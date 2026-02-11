@@ -1,6 +1,7 @@
 package com.busybee.obfeco.database;
 
 import com.busybee.obfeco.Obfeco;
+import com.busybee.obfeco.storage.YamlStorageManager;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.RequiredArgsConstructor;
@@ -15,12 +16,14 @@ import java.util.*;
 public class DatabaseManager {
     private final Obfeco plugin;
     private HikariDataSource dataSource;
-    
+    private YamlStorageManager yamlStorage;
+
     public boolean initialize() {
         String storageType = plugin.getConfigManager().getStorageType();
 
         if (storageType.equals("YAML")) {
-            plugin.getLogger().info("Using YAML storage - database disabled");
+            this.yamlStorage = new YamlStorageManager(plugin);
+            plugin.getLogger().info("Using YAML storage for player balances");
             return true;
         }
 
@@ -74,10 +77,12 @@ public class DatabaseManager {
     }
 
     public boolean createCurrencyTable(String currencyId) {
-        if (dataSource == null) return true;
+        if (yamlStorage != null) {
+            return yamlStorage.createCurrencyTable(currencyId);
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
-        
+
         // Added INDEX on player_uuid for performance
         String createTable = "CREATE TABLE IF NOT EXISTS " + tableName + " (" +
             "player_uuid VARCHAR(36) PRIMARY KEY, " +
@@ -85,7 +90,7 @@ public class DatabaseManager {
             "last_updated BIGINT NOT NULL, " +
             "INDEX (player_uuid)" +
             ")";
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(createTable)) {
             stmt.executeUpdate();
@@ -97,11 +102,13 @@ public class DatabaseManager {
     }
     
     public boolean deleteCurrencyTable(String currencyId) {
-        if (dataSource == null) return true;
+        if (yamlStorage != null) {
+            return yamlStorage.deleteCurrencyTable(currencyId);
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
         String dropTable = "DROP TABLE IF EXISTS " + tableName;
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(dropTable)) {
             stmt.executeUpdate();
@@ -113,15 +120,17 @@ public class DatabaseManager {
     }
     
     public double getBalance(UUID playerId, String currencyId) {
-        if (dataSource == null) return plugin.getCurrencyManager().getCurrency(currencyId).getStartingBalance();
+        if (yamlStorage != null) {
+            return yamlStorage.getBalance(playerId, currencyId);
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
         String query = "SELECT balance FROM " + tableName + " WHERE player_uuid = ?";
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, playerId.toString());
-            
+
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getDouble("balance");
@@ -129,19 +138,22 @@ public class DatabaseManager {
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to get balance for " + playerId + " in currency " + currencyId + ": " + e.getMessage());
         }
-        
+
         return plugin.getCurrencyManager().getCurrency(currencyId).getStartingBalance();
     }
     
     public void setBalance(UUID playerId, String currencyId, double balance) {
-        if (dataSource == null) return;
+        if (yamlStorage != null) {
+            yamlStorage.setBalance(playerId, currencyId, balance);
+            return;
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
-        
+
         // Optimized UPSERT for MySQL
         String upsert = "INSERT INTO " + tableName + " (player_uuid, balance, last_updated) VALUES (?, ?, ?) " +
             "ON DUPLICATE KEY UPDATE balance = ?, last_updated = ?";
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(upsert)) {
             long timestamp = System.currentTimeMillis();
@@ -150,7 +162,7 @@ public class DatabaseManager {
             stmt.setLong(3, timestamp);
             stmt.setDouble(4, balance);
             stmt.setLong(5, timestamp);
-            
+
             stmt.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to set balance for " + playerId + " in currency " + currencyId + ": " + e.getMessage());
@@ -158,7 +170,12 @@ public class DatabaseManager {
     }
 
     public void batchSetBalances(String currencyId, Map<UUID, Double> balances) {
-        if (dataSource == null || balances.isEmpty()) return;
+        if (balances.isEmpty()) return;
+
+        if (yamlStorage != null) {
+            yamlStorage.batchSetBalances(currencyId, balances);
+            return;
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
         String upsert = "INSERT INTO " + tableName + " (player_uuid, balance, last_updated) VALUES (?, ?, ?) " +
@@ -186,17 +203,19 @@ public class DatabaseManager {
     }
     
     public List<Map.Entry<UUID, Double>> getTopBalances(String currencyId, int limit) {
-        if (dataSource == null) return new ArrayList<>();
+        if (yamlStorage != null) {
+            return yamlStorage.getTopBalances(currencyId, limit);
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
         List<Map.Entry<UUID, Double>> topBalances = new ArrayList<>();
-        
+
         String query = "SELECT player_uuid, balance FROM " + tableName + " ORDER BY balance DESC LIMIT ?";
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, limit);
-            
+
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 UUID playerId = UUID.fromString(rs.getString("player_uuid"));
@@ -206,16 +225,18 @@ public class DatabaseManager {
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to get top balances for currency " + currencyId + ": " + e.getMessage());
         }
-        
+
         return topBalances;
     }
     
     public boolean resetCurrency(String currencyId) {
-        if (dataSource == null) return true;
+        if (yamlStorage != null) {
+            return yamlStorage.resetCurrency(currencyId);
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
         String truncate = "DELETE FROM " + tableName; // TRUNCATE might not be supported on all SQL dialects or might require higher perms
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(truncate)) {
             stmt.executeUpdate();
@@ -227,11 +248,13 @@ public class DatabaseManager {
     }
     
     public double getTotalCurrencyValue(String currencyId) {
-        if (dataSource == null) return 0.0;
+        if (yamlStorage != null) {
+            return yamlStorage.getTotalCurrencyValue(currencyId);
+        }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
         String query = "SELECT SUM(balance) as total FROM " + tableName;
-        
+
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
             ResultSet rs = stmt.executeQuery();
@@ -241,7 +264,7 @@ public class DatabaseManager {
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to get total value for currency " + currencyId + ": " + e.getMessage());
         }
-        
+
         return 0.0;
     }
 }
