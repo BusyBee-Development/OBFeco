@@ -136,4 +136,45 @@ public class ConfigManager {
     public String formatAmount(double amount) {
         return formatAmount(amount, null);
     }
+
+    public java.util.Map<String, String> getMigrationMappings() {
+        java.util.Map<String, String> mappings = new java.util.HashMap<>();
+
+        // Check if mappings section exists in config
+        if (config.isConfigurationSection("migration.coinsengine.mappings")) {
+            org.bukkit.configuration.ConfigurationSection section =
+                config.getConfigurationSection("migration.coinsengine.mappings");
+
+            if (section != null) {
+                for (String key : section.getKeys(false)) {
+                    String value = section.getString(key);
+                    if (value != null && !value.isEmpty()) {
+                        mappings.put(key, value);
+                    }
+                }
+            }
+        }
+
+        // If no mappings found, use source-currency as fallback
+        if (mappings.isEmpty()) {
+            String sourceCurrency = config.getString("migration.coinsengine.source-currency");
+            if (sourceCurrency != null && !sourceCurrency.isEmpty()) {
+                mappings.put(sourceCurrency, primaryCurrency);
+            }
+        }
+
+        return mappings;
+    }
+
+    public String getMigrationType() {
+        return config.getString("migration.coinsengine.type", "mysql").toLowerCase();
+    }
+
+    public String getMigrationFile() {
+        return config.getString("migration.coinsengine.file", "data.db");
+    }
+
+    public String getMigrationTable() {
+        return config.getString("migration.coinsengine.table", "coinsengine_users");
+    }
 }
