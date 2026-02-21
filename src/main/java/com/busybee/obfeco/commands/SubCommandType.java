@@ -2,7 +2,6 @@ package com.busybee.obfeco.commands;
 
 import com.busybee.obfeco.Obfeco;
 import com.busybee.obfeco.core.Currency;
-import com.busybee.obfeco.migration.MigrationManager;
 import com.busybee.obfeco.ui.impl.CurrencyManagerGUI;
 import com.busybee.obfeco.util.ColorUtil;
 import lombok.Getter;
@@ -12,7 +11,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Getter
@@ -639,26 +637,75 @@ public enum SubCommandType {
             return Collections.emptyList();
         }),
 
-    CONVERT("obfeco.convert", new String[]{},
+    SCAN("obfeco.admin", new String[]{},
         (plugin, sender, args) -> {
             if (args.length == 0) {
-                sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Usage: /obfeco convert <plugin> [currency]"));
-                sender.sendMessage(ColorUtil.colorize("<gray>Supported: CoinsEngine, Vault"));
+                sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Usage: /obfeco scan <plugin>"));
+                sender.sendMessage(ColorUtil.colorize("<gray>Available: <white>coinsengine"));
                 return;
             }
 
-            String sourcePlugin = args[0].toLowerCase();
-            String targetCurrency = args.length > 1 ? args[1] : plugin.getConfigManager().getPrimaryCurrency();
+            String source = args[0].toLowerCase();
+            if (!source.equals("coinsengine")) {
+                sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Unknown plugin: " + source));
+                sender.sendMessage(ColorUtil.colorize("<gray>Available: <white>coinsengine"));
+                return;
+            }
 
-            MigrationManager migrationManager = new MigrationManager(plugin);
+            sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>Scanning for " + source + " currencies..."));
+
+            com.busybee.obfeco.migration.MigrationManager migrationManager = new com.busybee.obfeco.migration.MigrationManager(plugin);
+            migrationManager.scanCoinsEngine((success, currencies, error) -> {
+                if (success) {
+                    if (currencies.isEmpty()) {
+                        sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>No currencies found in database."));
+                        sender.sendMessage(ColorUtil.colorize("<gray>Make sure the database path and table name are correct in config.yml"));
+                    } else {
+                        sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <green>Found " + currencies.size() + " currencies:"));
+                        for (String currency : currencies) {
+                            sender.sendMessage(ColorUtil.colorize("  <gray>- <white>" + currency));
+                        }
+                        sender.sendMessage(ColorUtil.colorize("<gray>Configure mappings in config.yml, then use <white>/obfeco convert coinsengine"));
+                    }
+                } else {
+                    sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Scan failed: " + error));
+                }
+            });
+        },
+        (plugin, sender, args) -> {
+            if (args.length == 1) {
+                return Collections.singletonList("coinsengine");
+            }
+            return Collections.emptyList();
+        }),
+
+    CONVERT("obfeco.convert", new String[]{"migrate"},
+        (plugin, sender, args) -> {
+            if (args.length == 0) {
+                sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Usage: /obfeco convert <plugin>"));
+                sender.sendMessage(ColorUtil.colorize("<gray>Available: <white>coinsengine"));
+                sender.sendMessage(ColorUtil.colorize("<yellow>Tip: Use <white>/obfeco scan coinsengine</white> first to see available currencies"));
+                return;
+            }
+
+            String source = args[0].toLowerCase();
+            if (!source.equals("coinsengine")) {
+                sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Unknown plugin: " + source));
+                sender.sendMessage(ColorUtil.colorize("<gray>Available: <white>coinsengine"));
+                return;
+            }
 
             sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " " +
                 plugin.getMessageManager().getMessage("convert.started")));
 
-            migrationManager.migrate(sourcePlugin, targetCurrency, (success, count, error) -> {
+            com.busybee.obfeco.migration.MigrationManager migrationManager = new com.busybee.obfeco.migration.MigrationManager(plugin);
+            migrationManager.migrate(source, null, (success, count, error) -> {
                 if (success) {
-                    sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " " +
-                        plugin.getMessageManager().getMessage("convert.success").replace("{count}", String.valueOf(count))));
+                    sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <green>Migration complete!"));
+                    sender.sendMessage(ColorUtil.colorize("<gray>Total balances migrated: <white>" + count));
+                    if (!error.isEmpty()) {
+                        sender.sendMessage(ColorUtil.colorize("<yellow>" + error));
+                    }
                 } else {
                     sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " " +
                         plugin.getMessageManager().getMessage("convert.failed").replace("{error}", error)));
@@ -667,13 +714,7 @@ public enum SubCommandType {
         },
         (plugin, sender, args) -> {
             if (args.length == 1) {
-                return Arrays.asList("CoinsEngine", "Vault");
-            }
-            if (args.length == 2) {
-                return plugin.getCurrencyManager().getCurrencies().stream()
-                    .map(Currency::getId)
-                    .filter(id -> id.toLowerCase().startsWith(args[1].toLowerCase()))
-                    .collect(Collectors.toList());
+                return Collections.singletonList("coinsengine");
             }
             return Collections.emptyList();
         }),

@@ -41,6 +41,11 @@ public class ConfigManager {
     private boolean adminTransactions;
     private boolean userTransactions;
 
+    private String migrationType;
+    private String migrationTable;
+    private String migrationFile;
+    private java.util.Map<String, String> migrationMappings;
+
     public ConfigManager(Obfeco plugin) {
         this.plugin = plugin;
         this.plugin.saveDefaultConfig();
@@ -80,6 +85,20 @@ public class ConfigManager {
         this.loggingEnabled = config.getBoolean("logging.enabled", true);
         this.adminTransactions = config.getBoolean("logging.admin-transactions", true);
         this.userTransactions = config.getBoolean("logging.user-transactions", true);
+
+        this.migrationType = config.getString("migration.coinsengine.type", "sqlite");
+        this.migrationTable = config.getString("migration.coinsengine.table", "coinsengine_users");
+        this.migrationFile = config.getString("migration.coinsengine.file", "plugins/CoinsEngine/coinsengine.db");
+        
+        this.migrationMappings = new java.util.HashMap<>();
+        if (config.contains("migration.coinsengine.mappings")) {
+            org.bukkit.configuration.ConfigurationSection mappingsSection = config.getConfigurationSection("migration.coinsengine.mappings");
+            if (mappingsSection != null) {
+                for (String key : mappingsSection.getKeys(false)) {
+                    this.migrationMappings.put(key, mappingsSection.getString(key));
+                }
+            }
+        }
     }
 
     public void reload() {
@@ -135,46 +154,5 @@ public class ConfigManager {
 
     public String formatAmount(double amount) {
         return formatAmount(amount, null);
-    }
-
-    public java.util.Map<String, String> getMigrationMappings() {
-        java.util.Map<String, String> mappings = new java.util.HashMap<>();
-
-        // Check if mappings section exists in config
-        if (config.isConfigurationSection("migration.coinsengine.mappings")) {
-            org.bukkit.configuration.ConfigurationSection section =
-                config.getConfigurationSection("migration.coinsengine.mappings");
-
-            if (section != null) {
-                for (String key : section.getKeys(false)) {
-                    String value = section.getString(key);
-                    if (value != null && !value.isEmpty()) {
-                        mappings.put(key, value);
-                    }
-                }
-            }
-        }
-
-        // If no mappings found, use source-currency as fallback
-        if (mappings.isEmpty()) {
-            String sourceCurrency = config.getString("migration.coinsengine.source-currency");
-            if (sourceCurrency != null && !sourceCurrency.isEmpty()) {
-                mappings.put(sourceCurrency, primaryCurrency);
-            }
-        }
-
-        return mappings;
-    }
-
-    public String getMigrationType() {
-        return config.getString("migration.coinsengine.type", "mysql").toLowerCase();
-    }
-
-    public String getMigrationFile() {
-        return config.getString("migration.coinsengine.file", "data.db");
-    }
-
-    public String getMigrationTable() {
-        return config.getString("migration.coinsengine.table", "coinsengine_users");
     }
 }

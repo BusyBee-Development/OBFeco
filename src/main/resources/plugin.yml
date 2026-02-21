@@ -9,6 +9,7 @@ softdepend:
   - Vault
   - VaultUnlocked
   - PlaceholderAPI
+  - CoinsEngine
 
 commands:
   obfeco:

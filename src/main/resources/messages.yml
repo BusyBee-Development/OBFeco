@@ -33,8 +33,7 @@ currency:
   reset-success: "<gray>Successfully wiped all data for <white>{currency}<gray>."
 
 convert:
-  started: "<gray>Migration started... please wait."
-  success: "<green>Successfully migrated <white>{count} <green>accounts!"
+  started: "<gray>Starting CoinsEngine migration... This may take a few moments."
   failed: "<red>Migration failed: {error}"
 
 reload:

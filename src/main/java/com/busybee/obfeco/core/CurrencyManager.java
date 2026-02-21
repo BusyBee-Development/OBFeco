@@ -53,8 +53,27 @@ public class CurrencyManager {
             boolean notifyGive = config.getBoolean("notify-give", true);
             boolean notifyTake = config.getBoolean("notify-take", true);
 
+            boolean needsSave = false;
+            if (!config.contains("notify-give")) {
+                config.set("notify-give", true);
+                needsSave = true;
+            }
+            if (!config.contains("notify-take")) {
+                config.set("notify-take", true);
+                needsSave = true;
+            }
+            if (needsSave) {
+                try {
+                    config.save(file);
+                    plugin.getLogger().info("Updated currency file " + id + ".yml with missing notify settings");
+                } catch (IOException e) {
+                    plugin.getLogger().warning("Failed to update currency file " + id + ".yml: " + e.getMessage());
+                }
+            }
+
             Currency currency = new Currency(id, displayName, symbol, format, material, startingBalance, useDecimals, notifyGive, notifyTake);
-            addCurrency(currency);
+            currencies.put(currency.getId(), currency);
+            dirtyPlayersByCurrency.put(currency.getId(), ConcurrentHashMap.newKeySet());
             plugin.getDatabaseManager().createCurrencyTable(id);
         }
     }
@@ -98,7 +117,7 @@ public class CurrencyManager {
     public void addCurrency(Currency currency) {
         currencies.put(currency.getId(), currency);
         dirtyPlayersByCurrency.put(currency.getId(), ConcurrentHashMap.newKeySet());
-        saveCurrency(currency);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> saveCurrency(currency));
     }
     
     public void removeCurrency(String currencyId) {

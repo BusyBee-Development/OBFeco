@@ -38,27 +38,17 @@ logging:
 
 migration:
   coinsengine:
-    # Database type: sqlite or mysql
     type: sqlite
-    # SQLite file path (relative to server root or absolute path)
-    file: /home/container/plugins/CoinsEngine/data.db
-    # MySQL connection settings (only used if type is mysql)
+    table: coinsengine_users
+    file: plugins/CoinsEngine/data.db
     host: localhost
     port: 3306
     database: minecraft
     username: root
     password: password
-    # Table name (usually coinsengine_users or coinsengine_data)
-    table: coinsengine_users
-    # Legacy single-currency migration (deprecated, use mappings instead)
-    source-currency: coins
-    # Multi-currency mappings (recommended)
-    # Maps CoinEngine currency names to OBFEco currency names
-    # If not specified, currencies will use the same ID
     mappings:
-      coins: dollars
-      # gems: gems
-      # tokens: tokens
+      crystals: gems
+      tokens: points
 
 gui:
   currency-manager:

@@ -96,6 +96,9 @@ public class ObfecoCommand implements CommandExecutor, TabCompleter {
         if (sender.hasPermission("obfeco.create")) {
             sender.sendMessage(ColorUtil.colorize("<gold>/obfeco manage <gray>- Open currency manager GUI"));
         }
+        if (sender.hasPermission("obfeco.admin")) {
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco scan <plugin> <gray>- Scan for currencies to migrate"));
+        }
         if (sender.hasPermission("obfeco.reload")) {
             sender.sendMessage(ColorUtil.colorize("<gold>/obfeco reload <gray>- Reload configuration"));
         }
