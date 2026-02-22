@@ -167,50 +167,83 @@ public class CoinsEngineMigration {
 
                 Set<UUID> allPlayerIds = new HashSet<>();
 
-                // Try different possible table names for CoinsEngine
-                String[] possibleQueries = {
-                    "SELECT player_id, currency_id, balance FROM coinsengine_user_balance WHERE balance > 0",
-                    "SELECT player_id, currency_id, balance FROM coinsengine_balances WHERE balance > 0",
-                    "SELECT uuid, currency, balance FROM coinsengine_data WHERE balance > 0",
-                    "SELECT player, currency, amount FROM user_balance WHERE amount > 0"
-                };
-
+                // CoinsEngine typically uses a wide-table format with one column per currency
+                // Try to read from coinsengine_users table with dynamic columns
                 boolean querySuccess = false;
-                for (String query : possibleQueries) {
-                    try (PreparedStatement stmt = connection.prepareStatement(query);
-                         ResultSet rs = stmt.executeQuery()) {
 
-                        plugin.getLogger().info("Successfully queried CoinsEngine database using: " + query);
+                try {
+                    // Get table metadata to find currency columns
+                    java.sql.DatabaseMetaData metaData = connection.getMetaData();
+                    ResultSet columns = metaData.getColumns(null, null, "coinsengine_users", null);
 
-                        while (rs.next()) {
-                            try {
-                                String playerIdStr = rs.getString(1);  // First column (UUID)
-                                String currencyId = rs.getString(2);   // Second column (currency)
-                                double balance = rs.getDouble(3);      // Third column (balance)
+                    List<String> currencyColumns = new ArrayList<>();
+                    String uuidColumn = null;
 
-                                UUID playerId = UUID.fromString(playerIdStr);
-                                allPlayerIds.add(playerId);
-
-                                if (allBalances.containsKey(currencyId)) {
-                                    allBalances.get(currencyId).put(playerId, balance);
-                                }
-                            } catch (Exception e) {
-                                plugin.getLogger().warning("Failed to parse balance record: " + e.getMessage());
-                            }
+                    while (columns.next()) {
+                        String columnName = columns.getString("COLUMN_NAME");
+                        // UUID column is typically 'uuid', 'player_uuid', or 'player_id'
+                        if (columnName.equalsIgnoreCase("uuid") ||
+                            columnName.equalsIgnoreCase("player_uuid") ||
+                            columnName.equalsIgnoreCase("player_id")) {
+                            uuidColumn = columnName;
+                        } else if (!columnName.equalsIgnoreCase("id") &&
+                                   !columnName.equalsIgnoreCase("name") &&
+                                   !columnName.equalsIgnoreCase("player_name")) {
+                            // Assume other columns are currency balances
+                            currencyColumns.add(columnName);
                         }
-
-                        plugin.getLogger().info("Loaded balances for " + allPlayerIds.size() + " players from database");
-                        querySuccess = true;
-                        break;
-
-                    } catch (Exception e) {
-                        // Try next query
-                        plugin.getLogger().fine("Query failed: " + query + " - " + e.getMessage());
                     }
+                    columns.close();
+
+                    if (uuidColumn != null && !currencyColumns.isEmpty()) {
+                        plugin.getLogger().info("Found UUID column: " + uuidColumn);
+                        plugin.getLogger().info("Found " + currencyColumns.size() + " potential currency columns");
+
+                        // Build and execute query
+                        StringBuilder queryBuilder = new StringBuilder("SELECT " + uuidColumn);
+                        for (String col : currencyColumns) {
+                            queryBuilder.append(", ").append(col);
+                        }
+                        queryBuilder.append(" FROM coinsengine_users");
+
+                        String query = queryBuilder.toString();
+                        plugin.getLogger().info("Querying CoinsEngine with: " + query);
+
+                        try (PreparedStatement stmt = connection.prepareStatement(query);
+                             ResultSet rs = stmt.executeQuery()) {
+
+                            while (rs.next()) {
+                                try {
+                                    String playerIdStr = rs.getString(uuidColumn);
+                                    UUID playerId = UUID.fromString(playerIdStr);
+                                    allPlayerIds.add(playerId);
+
+                                    // Read each currency balance
+                                    for (String currencyCol : currencyColumns) {
+                                        try {
+                                            double balance = rs.getDouble(currencyCol);
+                                            if (balance > 0 && allBalances.containsKey(currencyCol)) {
+                                                allBalances.get(currencyCol).put(playerId, balance);
+                                            }
+                                        } catch (Exception e) {
+                                            // Column might not be a currency or might be NULL
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    plugin.getLogger().warning("Failed to parse balance record: " + e.getMessage());
+                                }
+                            }
+
+                            plugin.getLogger().info("Loaded balances for " + allPlayerIds.size() + " players from database");
+                            querySuccess = true;
+                        }
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to query coinsengine_users table: " + e.getMessage());
                 }
 
                 if (!querySuccess) {
-                    plugin.getLogger().warning("Could not find CoinsEngine balance table. Tried multiple table structures.");
+                    plugin.getLogger().warning("Could not read CoinsEngine balance data.");
                     plugin.getLogger().warning("Please check your CoinsEngine database structure.");
                 }
 

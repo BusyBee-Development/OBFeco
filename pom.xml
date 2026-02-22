@@ -183,10 +183,6 @@
                                     <shadedPattern>com.busybee.obfeco.libs.xseries</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>org.sqlite</pattern>
-                                    <shadedPattern>com.busybee.obfeco.libs.sqlite</shadedPattern>
-                                </relocation>
-                                <relocation>
                                     <pattern>com.mysql</pattern>
                                     <shadedPattern>com.busybee.obfeco.libs.mysql</shadedPattern>
                                 </relocation>

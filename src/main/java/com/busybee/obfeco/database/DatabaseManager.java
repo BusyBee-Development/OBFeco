@@ -39,7 +39,7 @@ public class DatabaseManager {
                     "?useSSL=false&allowPublicKeyRetrieval=true");
                 config.setUsername(plugin.getConfigManager().getDatabaseUsername());
                 config.setPassword(plugin.getConfigManager().getDatabasePassword());
-                config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+                config.setDriverClassName("com.busybee.obfeco.libs.mysql.cj.jdbc.Driver");
                 config.addDataSourceProperty("cachePrepStmts", "true");
                 config.addDataSourceProperty("prepStmtCacheSize", "250");
                 config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -83,12 +83,10 @@ public class DatabaseManager {
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
 
-        // Added INDEX on player_uuid for performance
         String createTable = "CREATE TABLE IF NOT EXISTS " + tableName + " (" +
             "player_uuid VARCHAR(36) PRIMARY KEY, " +
             "balance DOUBLE NOT NULL DEFAULT 0.0, " +
-            "last_updated BIGINT NOT NULL, " +
-            "INDEX (player_uuid)" +
+            "last_updated BIGINT NOT NULL" +
             ")";
 
         try (Connection conn = getConnection();
