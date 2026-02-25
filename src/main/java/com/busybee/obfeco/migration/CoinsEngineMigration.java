@@ -76,14 +76,16 @@ public class CoinsEngineMigration {
     private Map<String, CECurrencyMeta> loadCurrencyMeta() {
         Map<String, CECurrencyMeta> map = new LinkedHashMap<>();
 
-        if (CoinsEngineAPI.isLoaded()) {
-            for (su.nightexpress.coinsengine.api.currency.Currency c : CoinsEngineAPI.getCurrencies()) {
-                map.put(c.getId(), new CECurrencyMeta(
-                    c.getId(), c.getName(), c.getSymbol(), c.getStartValue(), !c.isInteger()));
+        try {
+            if (Bukkit.getPluginManager().isPluginEnabled("CoinsEngine")) {
+                for (su.nightexpress.coinsengine.api.currency.Currency c : CoinsEngineAPI.getCurrencyManager().getCurrencies()) {
+                    map.put(c.getId(), new CECurrencyMeta(
+                        c.getId(), c.getName(), c.getSymbol(), c.getStartValue(), c.isDecimal()));
+                }
+                plugin.getLogger().info("[Migration] Loaded " + map.size() + " currencies via CoinsEngineAPI");
+                return map;
             }
-            plugin.getLogger().info("[Migration] Loaded " + map.size() + " currencies via CoinsEngineAPI");
-            return map;
-        }
+        } catch (NoClassDefFoundError | NoSuchMethodError | Exception ignored) {}
 
         File currenciesDir = new File(plugin.getDataFolder().getParentFile(), "CoinsEngine/currencies");
         if (currenciesDir.exists() && currenciesDir.isDirectory()) {

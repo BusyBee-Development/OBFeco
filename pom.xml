@@ -113,8 +113,17 @@
         <dependency>
             <groupId>su.nightexpress.coinsengine</groupId>
             <artifactId>CoinsEngine</artifactId>
-            <version>2.6.0</version>
-            <scope>provided</scope>
+            <version>2.1.1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/CoinsEngine-2.1.1.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>su.nightexpress.nexengine</groupId>
+            <artifactId>NexEngine</artifactId>
+            <version>2.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/NexEngine.jar</systemPath>
         </dependency>
 
         <dependency>
@@ -127,8 +136,8 @@
         <dependency>
             <groupId>com.github.cryptomorin</groupId>
             <artifactId>XSeries</artifactId>
-            <version>10.0.0</version>
-            <scope>provided</scope>
+            <version>13.0.0</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
@@ -157,6 +166,28 @@
                 </configuration>
             </plugin>
 
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.cryptomorin.xseries</pattern>
+                                    <shadedPattern>com.busybee.obfeco.utils.xseries</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
