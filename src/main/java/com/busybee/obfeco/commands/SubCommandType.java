@@ -670,9 +670,10 @@ public enum SubCommandType {
                 return;
             }
 
+            boolean debug = args.length > 1 && args[1].equalsIgnoreCase("debug");
             sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>Scanning CoinsEngine currencies..."));
 
-            migration.scanCurrenciesDetailed().thenAccept(results -> {
+            migration.scanCurrenciesDetailed(debug).thenAccept(results -> {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (results.isEmpty()) {
                         sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>No currencies found in CoinsEngine."));
@@ -695,6 +696,9 @@ public enum SubCommandType {
         (plugin, sender, args) -> {
             if (args.length == 1) {
                 return Collections.singletonList("coinsengine");
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("coinsengine")) {
+                return Collections.singletonList("debug");
             }
             return Collections.emptyList();
         }),
@@ -723,10 +727,11 @@ public enum SubCommandType {
                 return;
             }
 
+            boolean debug = args.length > 1 && args[1].equalsIgnoreCase("debug");
             sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>Starting CoinsEngine migration..."));
             sender.sendMessage(ColorUtil.colorize("<gray>This may take a few moments depending on player count."));
 
-            migration.migrate((success, playersProcessed, currenciesMigrated, details) -> {
+            migration.migrate(debug, (success, playersProcessed, currenciesMigrated, details) -> {
                 if (success) {
                     sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <green>Migration complete!"));
                     sender.sendMessage(ColorUtil.colorize("<gray>Players processed: <white>" + playersProcessed));
@@ -743,6 +748,9 @@ public enum SubCommandType {
         (plugin, sender, args) -> {
             if (args.length == 1) {
                 return Collections.singletonList("coinsengine");
+            }
+            if (args.length == 2 && args[0].equalsIgnoreCase("coinsengine")) {
+                return Collections.singletonList("debug");
             }
             return Collections.emptyList();
         }),

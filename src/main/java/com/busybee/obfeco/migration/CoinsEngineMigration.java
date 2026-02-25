@@ -26,7 +26,8 @@ public class CoinsEngineMigration {
     private static final String DATA_COL = "currencyData";
 
     private static final Set<String> SYSTEM_COLUMNS = new HashSet<>(Arrays.asList(
-        "id", "uuid", "name", "datecreated", "last_online", "settings", "hiddenfromtops"
+        "id", "uuid", "name", "datecreated", "last_online", "settings", "hiddenfromtops",
+        "player_uuid", "player_name", "last_ip", "last_hostname", "lastonline", "currencydata"
     ));
 
     public interface MigrationCallback {
@@ -112,27 +113,43 @@ public class CoinsEngineMigration {
 
     private List<String> getTableColumns(Connection conn, String tableName) throws SQLException {
         List<String> columns = new ArrayList<>();
-
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+        DatabaseMetaData meta = conn.getMetaData();
+        try (ResultSet rs = meta.getColumns(null, null, tableName, null)) {
             while (rs.next()) {
-                columns.add(rs.getString("name"));
+                columns.add(rs.getString("COLUMN_NAME"));
             }
-        } catch (SQLException ignored) {}
+        }
 
         if (columns.isEmpty()) {
-            DatabaseMetaData meta = conn.getMetaData();
-            try (ResultSet cols = meta.getColumns(null, null, tableName, null)) {
-                while (cols.next()) columns.add(cols.getString("COLUMN_NAME"));
-            }
-            if (columns.isEmpty()) {
-                try (ResultSet cols = meta.getColumns(null, null, tableName.toLowerCase(), null)) {
-                    while (cols.next()) columns.add(cols.getString("COLUMN_NAME"));
+            try (ResultSet rs = meta.getColumns(null, null, tableName.toLowerCase(), null)) {
+                while (rs.next()) {
+                    columns.add(rs.getString("COLUMN_NAME"));
                 }
             }
         }
 
+        if (columns.isEmpty()) {
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery("PRAGMA table_info(" + tableName + ")")) {
+                while (rs.next()) {
+                    columns.add(rs.getString("name"));
+                }
+            } catch (SQLException ignored) {}
+        }
+
         return columns;
+    }
+
+    private String resolveUuidColumn(Connection conn, String tableName) throws SQLException {
+        List<String> cols = getTableColumns(conn, tableName);
+        for (String col : cols) {
+            String lower = col.toLowerCase();
+            if (lower.equals("uuid")) return col;
+            if (lower.equals("player_uuid")) return col;
+            if (lower.equals("player_id")) return col;
+            if (lower.equals("playeruuid")) return col;
+        }
+        return UUID_COL;
     }
 
     private boolean hasJsonDataColumn(Connection conn, String tableName) throws SQLException {
@@ -148,16 +165,105 @@ public class CoinsEngineMigration {
     }
 
     private Map<String, Map<UUID, Double>> extractBalances(Connection conn, Set<String> knownCurrencies) throws SQLException {
-        String actualTable = resolveTable(conn);
-        plugin.getLogger().info("[Migration] Using table: " + actualTable);
+        return extractBalances(conn, knownCurrencies, false);
+    }
 
-        if (hasJsonDataColumn(conn, actualTable)) {
-            plugin.getLogger().info("[Migration] Using JSON column mode (currencyData)");
-            return extractBalancesFromJsonColumn(conn, actualTable);
+    private Map<String, Map<UUID, Double>> extractBalances(Connection conn, Set<String> knownCurrencies, boolean debug) throws SQLException {
+        String actualTable = resolveTable(conn);
+        String uuidCol = resolveUuidColumn(conn, actualTable);
+        boolean hasJson = hasJsonDataColumn(conn, actualTable);
+
+        if (debug) {
+            plugin.getLogger().info("[Migration-Debug] Using table: " + actualTable);
+            plugin.getLogger().info("[Migration-Debug] Using UUID column: " + uuidCol);
+            plugin.getLogger().info("[Migration-Debug] JSON column detected: " + hasJson);
         }
 
-        plugin.getLogger().info("[Migration] currencyData column not found, using flat-column mode");
-        return extractBalancesFromFlatColumns(conn, actualTable, knownCurrencies);
+        Map<String, Map<UUID, Double>> result = new HashMap<>();
+        List<String> allColumns = getTableColumns(conn, actualTable);
+        List<String> flatCurrencyCols = new ArrayList<>();
+
+        for (String col : allColumns) {
+            String lower = col.toLowerCase();
+            if (SYSTEM_COLUMNS.contains(lower)) continue;
+            if (lower.equalsIgnoreCase(uuidCol)) continue;
+            if (lower.equalsIgnoreCase(DATA_COL)) continue;
+            
+            // Check if it's numeric
+            flatCurrencyCols.add(col);
+        }
+
+        if (debug) {
+            plugin.getLogger().info("[Migration-Debug] Potential flat columns: " + flatCurrencyCols);
+        }
+
+        Map<String, String> mappings = plugin.getConfigManager().getMigrationMappings();
+
+        String sql = "SELECT * FROM " + actualTable;
+        int totalRows = 0;
+        int parsedRows = 0;
+
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                totalRows++;
+                String uuidStr = rs.getString(uuidCol);
+                if (uuidStr == null || uuidStr.isEmpty()) continue;
+
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(uuidStr);
+                } catch (IllegalArgumentException e) {
+                    continue;
+                }
+
+                boolean rowHasData = false;
+
+                // 1. Process JSON
+                if (hasJson) {
+                    String jsonStr = rs.getString(DATA_COL);
+                    if (jsonStr != null && !jsonStr.isEmpty()) {
+                        parseBalancesFromJson(jsonStr, uuid, result, null);
+                        rowHasData = true;
+                    }
+                }
+
+                // 2. Process Flat Columns (as fallback or additive)
+                for (String col : flatCurrencyCols) {
+                    try {
+                        double balance = rs.getDouble(col);
+                        if (balance > 0) {
+                            String sourceCid = col;
+                            if (sourceCid.toLowerCase().startsWith("balance_")) {
+                                sourceCid = sourceCid.substring(8);
+                            }
+                            
+                            String targetCid = mappings.getOrDefault(sourceCid, sourceCid);
+                            
+                            // Only add if not already present from JSON
+                            Map<UUID, Double> players = result.computeIfAbsent(targetCid, k -> new HashMap<>());
+                            if (!players.containsKey(uuid)) {
+                                players.put(uuid, balance);
+                            }
+                            rowHasData = true;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                if (rowHasData) parsedRows++;
+
+                if (debug && totalRows <= 5) {
+                    plugin.getLogger().info("[Migration-Debug] Sample Row " + totalRows + " (UUID: " + uuidStr + ")");
+                    for (Map.Entry<String, Map<UUID, Double>> entry : result.entrySet()) {
+                        if (entry.getValue().containsKey(uuid)) {
+                            plugin.getLogger().info("  - " + entry.getKey() + ": " + entry.getValue().get(uuid));
+                        }
+                    }
+                }
+            }
+        }
+
+        plugin.getLogger().info("[Migration] Extracted data from " + parsedRows + " out of " + totalRows + " rows");
+        return result;
     }
 
     private Map<String, Map<UUID, Double>> extractBalancesFromJsonColumn(Connection conn, String tableName) throws SQLException {
@@ -352,6 +458,10 @@ public class CoinsEngineMigration {
     }
 
     public void migrate(MigrationCallback callback) {
+        migrate(false, callback);
+    }
+
+    public void migrate(boolean debug, MigrationCallback callback) {
         if (!isCoinsEngineAvailable()) {
             callback.onComplete(false, 0, 0, "CoinsEngine folder not found at: " +
                 new File(plugin.getDataFolder().getParentFile(), "CoinsEngine").getAbsolutePath());
@@ -359,6 +469,7 @@ public class CoinsEngineMigration {
         }
 
         plugin.getLogger().info("[Migration] === CoinsEngine Migration Starting ===");
+        if (debug) plugin.getLogger().info("[Migration] DEBUG MODE ENABLED");
 
         CompletableFuture.runAsync(() -> {
             Connection conn = null;
@@ -372,7 +483,7 @@ public class CoinsEngineMigration {
                 Map<String, CECurrencyMeta> currencyMeta = loadCurrencyMeta();
                 Set<String> knownIds = currencyMeta.isEmpty() ? null : currencyMeta.keySet();
 
-                Map<String, Map<UUID, Double>> allBalances = extractBalances(conn, knownIds);
+                Map<String, Map<UUID, Double>> allBalances = extractBalances(conn, knownIds, debug);
 
                 if (allBalances.isEmpty()) {
                     plugin.getLogger().warning("[Migration] No balance data found. Check that the database has player rows.");
@@ -449,6 +560,10 @@ public class CoinsEngineMigration {
     }
 
     public CompletableFuture<List<CurrencyScanResult>> scanCurrenciesDetailed() {
+        return scanCurrenciesDetailed(false);
+    }
+
+    public CompletableFuture<List<CurrencyScanResult>> scanCurrenciesDetailed(boolean debug) {
         return CompletableFuture.supplyAsync(() -> {
             if (!isCoinsEngineAvailable()) return Collections.emptyList();
 
@@ -458,7 +573,7 @@ public class CoinsEngineMigration {
                 conn = openConnection(cfg);
 
                 Map<String, CECurrencyMeta> meta = loadCurrencyMeta();
-                Map<String, Map<UUID, Double>> allBalances = extractBalances(conn, meta.isEmpty() ? null : meta.keySet());
+                Map<String, Map<UUID, Double>> allBalances = extractBalances(conn, meta.isEmpty() ? null : meta.keySet(), debug);
 
                 Set<String> allIds = new LinkedHashSet<>();
                 allIds.addAll(meta.keySet());
