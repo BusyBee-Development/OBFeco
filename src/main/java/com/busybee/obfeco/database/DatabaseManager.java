@@ -140,6 +140,22 @@ public class DatabaseManager {
         return plugin.getCurrencyManager().getCurrency(currencyId).getStartingBalance();
     }
     
+    private boolean isSQLite() {
+        try (Connection conn = getConnection()) {
+            return conn.getMetaData().getURL().startsWith("jdbc:sqlite");
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    private String buildUpsert(String tableName, boolean sqlite) {
+        if (sqlite) {
+            return "INSERT OR REPLACE INTO " + tableName + " (player_uuid, balance, last_updated) VALUES (?, ?, ?)";
+        }
+        return "INSERT INTO " + tableName + " (player_uuid, balance, last_updated) VALUES (?, ?, ?) " +
+            "ON DUPLICATE KEY UPDATE balance = VALUES(balance), last_updated = VALUES(last_updated)";
+    }
+
     public void setBalance(UUID playerId, String currencyId, double balance) {
         if (yamlStorage != null) {
             yamlStorage.setBalance(playerId, currencyId, balance);
@@ -147,10 +163,8 @@ public class DatabaseManager {
         }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
-
-        // Optimized UPSERT for MySQL
-        String upsert = "INSERT INTO " + tableName + " (player_uuid, balance, last_updated) VALUES (?, ?, ?) " +
-            "ON DUPLICATE KEY UPDATE balance = ?, last_updated = ?";
+        boolean sqlite = isSQLite();
+        String upsert = buildUpsert(tableName, sqlite);
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(upsert)) {
@@ -158,9 +172,10 @@ public class DatabaseManager {
             stmt.setString(1, playerId.toString());
             stmt.setDouble(2, balance);
             stmt.setLong(3, timestamp);
-            stmt.setDouble(4, balance);
-            stmt.setLong(5, timestamp);
-
+            if (!sqlite) {
+                stmt.setDouble(4, balance);
+                stmt.setLong(5, timestamp);
+            }
             stmt.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to set balance for " + playerId + " in currency " + currencyId + ": " + e.getMessage());
@@ -176,8 +191,8 @@ public class DatabaseManager {
         }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
-        String upsert = "INSERT INTO " + tableName + " (player_uuid, balance, last_updated) VALUES (?, ?, ?) " +
-                "ON DUPLICATE KEY UPDATE balance = ?, last_updated = ?";
+        boolean sqlite = isSQLite();
+        String upsert = buildUpsert(tableName, sqlite);
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(upsert)) {
@@ -188,8 +203,10 @@ public class DatabaseManager {
                 stmt.setString(1, entry.getKey().toString());
                 stmt.setDouble(2, entry.getValue());
                 stmt.setLong(3, timestamp);
-                stmt.setDouble(4, entry.getValue());
-                stmt.setLong(5, timestamp);
+                if (!sqlite) {
+                    stmt.setDouble(4, entry.getValue());
+                    stmt.setLong(5, timestamp);
+                }
                 stmt.addBatch();
             }
 

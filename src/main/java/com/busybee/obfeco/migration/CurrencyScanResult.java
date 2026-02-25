@@ -12,4 +12,5 @@ public class CurrencyScanResult {
     private final double startingBalance;
     private final boolean useDecimals;
     private final boolean alreadyExists;
+    private final int playerCount;
 }

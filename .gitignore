@@ -26,7 +26,9 @@ replay_pid*
 # Maven
 target/
 lib/
+manifest.kod
 pom.xml.tag
+obfeco.iml
 pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
