@@ -1,6 +1,7 @@
 package com.busybee.obfeco.database;
 
 import com.busybee.obfeco.Obfeco;
+import com.busybee.obfeco.core.Currency;
 import com.busybee.obfeco.storage.YamlStorageManager;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -39,7 +40,7 @@ public class DatabaseManager {
                     "?useSSL=false&allowPublicKeyRetrieval=true");
                 config.setUsername(plugin.getConfigManager().getDatabaseUsername());
                 config.setPassword(plugin.getConfigManager().getDatabasePassword());
-                config.setDriverClassName("com.busybee.obfeco.libs.mysql.cj.jdbc.Driver");
+                config.setDriverClassName("com.mysql.cj.jdbc.Driver");
                 config.addDataSourceProperty("cachePrepStmts", "true");
                 config.addDataSourceProperty("prepStmtCacheSize", "250");
                 config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
@@ -62,13 +63,13 @@ public class DatabaseManager {
             return false;
         }
     }
-    
+
     public void shutdown() {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
         }
     }
-    
+
     public Connection getConnection() throws SQLException {
         if (dataSource == null) {
             throw new SQLException("Database is not initialized (using YAML storage)");
@@ -95,10 +96,11 @@ public class DatabaseManager {
             return true;
         } catch (SQLException e) {
             plugin.getLogger().severe("Failed to create table for currency " + currencyId + ": " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
-    
+
     public boolean deleteCurrencyTable(String currencyId) {
         if (yamlStorage != null) {
             return yamlStorage.deleteCurrencyTable(currencyId);
@@ -116,7 +118,7 @@ public class DatabaseManager {
             return false;
         }
     }
-    
+
     public double getBalance(UUID playerId, String currencyId) {
         if (yamlStorage != null) {
             return yamlStorage.getBalance(playerId, currencyId);
@@ -137,9 +139,10 @@ public class DatabaseManager {
             plugin.getLogger().warning("Failed to get balance for " + playerId + " in currency " + currencyId + ": " + e.getMessage());
         }
 
-        return plugin.getCurrencyManager().getCurrency(currencyId).getStartingBalance();
+        Currency currency = plugin.getCurrencyManager().getCurrency(currencyId);
+        return currency != null ? currency.getStartingBalance() : 0.0;
     }
-    
+
     private boolean isSQLite() {
         try (Connection conn = getConnection()) {
             return conn.getMetaData().getURL().startsWith("jdbc:sqlite");
@@ -172,13 +175,10 @@ public class DatabaseManager {
             stmt.setString(1, playerId.toString());
             stmt.setDouble(2, balance);
             stmt.setLong(3, timestamp);
-            if (!sqlite) {
-                stmt.setDouble(4, balance);
-                stmt.setLong(5, timestamp);
-            }
             stmt.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to set balance for " + playerId + " in currency " + currencyId + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -203,20 +203,18 @@ public class DatabaseManager {
                 stmt.setString(1, entry.getKey().toString());
                 stmt.setDouble(2, entry.getValue());
                 stmt.setLong(3, timestamp);
-                if (!sqlite) {
-                    stmt.setDouble(4, entry.getValue());
-                    stmt.setLong(5, timestamp);
-                }
                 stmt.addBatch();
             }
 
             stmt.executeBatch();
             conn.commit();
+            plugin.getLogger().info("[DB] Wrote " + balances.size() + " balances for currency: " + currencyId);
         } catch (SQLException e) {
-            plugin.getLogger().warning("Failed to batch save balances for currency " + currencyId + ": " + e.getMessage());
+            plugin.getLogger().severe("Failed to batch save balances for currency " + currencyId + ": " + e.getMessage());
+            e.printStackTrace();
         }
     }
-    
+
     public List<Map.Entry<UUID, Double>> getTopBalances(String currencyId, int limit) {
         if (yamlStorage != null) {
             return yamlStorage.getTopBalances(currencyId, limit);
@@ -243,14 +241,14 @@ public class DatabaseManager {
 
         return topBalances;
     }
-    
+
     public boolean resetCurrency(String currencyId) {
         if (yamlStorage != null) {
             return yamlStorage.resetCurrency(currencyId);
         }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
-        String truncate = "DELETE FROM " + tableName; // TRUNCATE might not be supported on all SQL dialects or might require higher perms
+        String truncate = "DELETE FROM " + tableName;
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(truncate)) {
@@ -261,7 +259,7 @@ public class DatabaseManager {
             return false;
         }
     }
-    
+
     public double getTotalCurrencyValue(String currencyId) {
         if (yamlStorage != null) {
             return yamlStorage.getTotalCurrencyValue(currencyId);

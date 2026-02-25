@@ -3,6 +3,7 @@ package com.busybee.obfeco.commands;
 import com.busybee.obfeco.Obfeco;
 import com.busybee.obfeco.core.Currency;
 import com.busybee.obfeco.ui.impl.CurrencyManagerGUI;
+import com.busybee.obfeco.ui.impl.TopBalancesGUI;
 import com.busybee.obfeco.util.ColorUtil;
 import lombok.Getter;
 import org.bukkit.Bukkit;
@@ -246,6 +247,15 @@ public enum SubCommandType {
             }
 
             int finalPage = Math.max(1, page);
+
+            if (sender instanceof Player) {
+                Player player = (Player) sender;
+                TopBalancesGUI gui = new TopBalancesGUI(plugin, currency, finalPage);
+                gui.decorate(player);
+                plugin.getGuiManager().openGUI(gui, player);
+                return;
+            }
+
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 int limit = 10;
                 int offset = (finalPage - 1) * limit;
@@ -257,10 +267,10 @@ public enum SubCommandType {
 
                     for (int i = offset; i < Math.min(topBalances.size(), offset + limit); i++) {
                         Map.Entry<UUID, Double> entry = topBalances.get(i);
-                        OfflinePlayer player = Bukkit.getOfflinePlayer(entry.getKey());
+                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entry.getKey());
                         sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getMessage("top.entry")
                             .replace("{position}", String.valueOf(i + 1))
-                            .replace("{player}", player.getName() != null ? player.getName() : "Unknown")
+                            .replace("{player}", offlinePlayer.getName() != null ? offlinePlayer.getName() : "Unknown")
                             .replace("{amount}", plugin.getConfigManager().formatAmount(entry.getValue(), currency))));
                     }
 

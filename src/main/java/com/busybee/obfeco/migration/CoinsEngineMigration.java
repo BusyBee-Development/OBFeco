@@ -164,12 +164,21 @@ public class CoinsEngineMigration {
         int parsedRows = 0;
         int errorRows = 0;
 
-        String sql = "SELECT " + UUID_COL + ", " + DATA_COL + " FROM " + tableName;
+        String actualDataCol = DATA_COL;
+        List<String> cols = getTableColumns(conn, tableName);
+        for (String col : cols) {
+            if (col.equalsIgnoreCase(DATA_COL)) {
+                actualDataCol = col;
+                break;
+            }
+        }
+
+        String sql = "SELECT " + UUID_COL + ", " + actualDataCol + " FROM " + tableName;
         try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 totalRows++;
                 String uuidStr = rs.getString(UUID_COL);
-                String jsonStr = rs.getString(DATA_COL);
+                String jsonStr = rs.getString(actualDataCol);
 
                 if (uuidStr == null || uuidStr.isEmpty() || jsonStr == null || jsonStr.isEmpty()) {
                     continue;
@@ -386,31 +395,31 @@ public class CoinsEngineMigration {
 
                     plugin.getLogger().info("[Migration] Processing: " + cid + " (" + balances.size() + " players)");
 
-                    final String finalCid = cid;
-                    final CECurrencyMeta finalMeta = meta;
-                    Bukkit.getScheduler().runTask(plugin, () -> {
-                        if (plugin.getCurrencyManager().getCurrency(finalCid) == null) {
-                            Currency newCurrency = new Currency(
-                                finalCid,
-                                finalMeta.name,
-                                finalMeta.symbol,
-                                "%amount%%symbol%",
-                                "GOLD_INGOT",
-                                finalMeta.startValue,
-                                finalMeta.decimals,
-                                true,
-                                true
-                            );
-                            plugin.getCurrencyManager().addCurrency(newCurrency);
-                            plugin.getDatabaseManager().createCurrencyTable(finalCid);
-                            plugin.getLogger().info("[Migration] Created new currency: " + finalCid);
-                        } else {
-                            plugin.getDatabaseManager().createCurrencyTable(finalCid);
-                        }
-                    });
+                    if (plugin.getCurrencyManager().getCurrency(cid) == null) {
+                        final String finalCid = cid;
+                        final CECurrencyMeta finalMeta = meta;
+                        Currency newCurrency = new Currency(
+                            finalCid,
+                            finalMeta.name,
+                            finalMeta.symbol,
+                            "%amount%%symbol%",
+                            "GOLD_INGOT",
+                            finalMeta.startValue,
+                            finalMeta.decimals,
+                            true,
+                            true
+                        );
+                        plugin.getCurrencyManager().addCurrency(newCurrency);
+                        plugin.getLogger().info("[Migration] Registered new currency in memory: " + finalCid);
+                    }
 
-                    Thread.sleep(150);
+                    boolean tableCreated = plugin.getDatabaseManager().createCurrencyTable(cid);
+                    if (!tableCreated) {
+                        plugin.getLogger().severe("[Migration] Failed to create table for currency: " + cid + " — skipping batch write");
+                        continue;
+                    }
 
+                    plugin.getLogger().info("[Migration] Created new currency: " + cid);
                     plugin.getDatabaseManager().batchSetBalances(cid, balances);
                     totalPlayers = Math.max(totalPlayers, balances.size());
                     totalCurrencies++;
