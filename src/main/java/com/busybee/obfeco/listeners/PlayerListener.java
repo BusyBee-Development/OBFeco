@@ -13,6 +13,7 @@ public class PlayerListener implements Listener {
     
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
+        plugin.getDatabaseManager().updatePlayerName(event.getPlayer().getUniqueId(), event.getPlayer().getName());
         plugin.getCurrencyManager().loadPlayerData(event.getPlayer().getUniqueId());
     }
     

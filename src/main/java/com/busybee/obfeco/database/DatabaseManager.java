@@ -12,12 +12,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RequiredArgsConstructor
 public class DatabaseManager {
     private final Obfeco plugin;
     private HikariDataSource dataSource;
     private YamlStorageManager yamlStorage;
+    
+    private final Map<String, List<Map.Entry<UUID, Double>>> topBalancesCache = new ConcurrentHashMap<>();
+    private final Map<String, Long> cacheTimestamps = new ConcurrentHashMap<>();
 
     public boolean initialize() {
         String storageType = plugin.getConfigManager().getStorageType();
@@ -55,6 +60,9 @@ public class DatabaseManager {
 
             this.dataSource = new HikariDataSource(config);
 
+            // Create players table
+            createPlayersTable();
+
             plugin.getLogger().info("Database connection established (" + storageType + ")");
             return true;
         } catch (Exception e) {
@@ -77,6 +85,125 @@ public class DatabaseManager {
         return dataSource.getConnection();
     }
 
+    private void createPlayersTable() {
+        if (yamlStorage != null) return;
+
+        String createTable = "CREATE TABLE IF NOT EXISTS obfeco_players (" +
+            "player_uuid VARCHAR(36) PRIMARY KEY, " +
+            "player_name VARCHAR(16) NOT NULL" +
+            ")";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(createTable)) {
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Failed to create players table: " + e.getMessage());
+        }
+    }
+
+
+    private void createIndex(String currencyId) {
+        String tableName = "obfeco_" + currencyId.toLowerCase();
+        String indexName = "idx_" + tableName + "_balance";
+        
+        String createIndex;
+        if (isSQLite()) {
+            createIndex = "CREATE INDEX IF NOT EXISTS " + indexName + " ON " + tableName + " (balance DESC)";
+        } else {
+            // MySQL: Need to check if it exists first or use a try-catch because "IF NOT EXISTS" is for tables, not indexes in older MySQL
+            // But MariaDB and MySQL 8.0 support it. For compatibility we'll use a simpler approach or just try it.
+            createIndex = "CREATE INDEX " + indexName + " ON " + tableName + " (balance DESC)";
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(createIndex)) {
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            // Index probably already exists in MySQL if it fails
+            if (!e.getMessage().toLowerCase().contains("duplicate key") && !e.getMessage().toLowerCase().contains("already exists")) {
+                // plugin.getLogger().warning("Could not create index for " + currencyId + ": " + e.getMessage());
+            }
+        }
+    }
+
+    public void updatePlayerName(UUID uuid, String name) {
+        if (name == null || name.isEmpty()) return;
+
+        if (yamlStorage != null) {
+            yamlStorage.updatePlayerName(uuid, name);
+            return;
+        }
+
+        boolean sqlite = isSQLite();
+        String upsert;
+        if (sqlite) {
+            upsert = "INSERT OR REPLACE INTO obfeco_players (player_uuid, player_name) VALUES (?, ?)";
+        } else {
+            upsert = "INSERT INTO obfeco_players (player_uuid, player_name) VALUES (?, ?) " +
+                "ON DUPLICATE KEY UPDATE player_name = VALUES(player_name)";
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(upsert)) {
+            stmt.setString(1, uuid.toString());
+            stmt.setString(2, name);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Failed to update player name for " + uuid + ": " + e.getMessage());
+        }
+    }
+
+    public void batchUpdatePlayerNames(Map<UUID, String> names) {
+        if (names == null || names.isEmpty()) return;
+
+        if (yamlStorage != null) {
+            yamlStorage.batchUpdatePlayerNames(names);
+            return;
+        }
+
+        boolean sqlite = isSQLite();
+        String upsert;
+        if (sqlite) {
+            upsert = "INSERT OR REPLACE INTO obfeco_players (player_uuid, player_name) VALUES (?, ?)";
+        } else {
+            upsert = "INSERT INTO obfeco_players (player_uuid, player_name) VALUES (?, ?) " +
+                "ON DUPLICATE KEY UPDATE player_name = VALUES(player_name)";
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(upsert)) {
+            conn.setAutoCommit(false);
+            for (Map.Entry<UUID, String> entry : names.entrySet()) {
+                stmt.setString(1, entry.getKey().toString());
+                stmt.setString(2, entry.getValue());
+                stmt.addBatch();
+            }
+            stmt.executeBatch();
+            conn.commit();
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Failed to batch update player names: " + e.getMessage());
+        }
+    }
+
+    public String getPlayerName(UUID uuid) {
+        if (yamlStorage != null) {
+            return yamlStorage.getPlayerName(uuid);
+        }
+
+        String query = "SELECT player_name FROM obfeco_players WHERE player_uuid = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, uuid.toString());
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("player_name");
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().warning("Failed to get player name for " + uuid + ": " + e.getMessage());
+        }
+        return null;
+    }
+
     public boolean createCurrencyTable(String currencyId) {
         if (yamlStorage != null) {
             return yamlStorage.createCurrencyTable(currencyId);
@@ -93,6 +220,10 @@ public class DatabaseManager {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(createTable)) {
             stmt.executeUpdate();
+            
+            // Create index for performance
+            createIndex(currencyId);
+            
             return true;
         } catch (SQLException e) {
             plugin.getLogger().severe("Failed to create table for currency " + currencyId + ": " + e.getMessage());
@@ -220,6 +351,14 @@ public class DatabaseManager {
             return yamlStorage.getTopBalances(currencyId, limit);
         }
 
+        // Check cache
+        String cacheKey = currencyId.toLowerCase() + ":" + limit;
+        long cacheTime = plugin.getConfigManager().getTopCacheMinutes() * 60000L;
+        
+        if (cacheTimestamps.containsKey(cacheKey) && (System.currentTimeMillis() - cacheTimestamps.get(cacheKey)) < cacheTime) {
+            return new ArrayList<>(topBalancesCache.get(cacheKey));
+        }
+
         String tableName = "obfeco_" + currencyId.toLowerCase();
         List<Map.Entry<UUID, Double>> topBalances = new ArrayList<>();
 
@@ -235,11 +374,20 @@ public class DatabaseManager {
                 double balance = rs.getDouble("balance");
                 topBalances.add(new AbstractMap.SimpleEntry<>(playerId, balance));
             }
+            
+            // Update cache
+            topBalancesCache.put(cacheKey, new ArrayList<>(topBalances));
+            cacheTimestamps.put(cacheKey, System.currentTimeMillis());
+            
         } catch (SQLException e) {
             plugin.getLogger().warning("Failed to get top balances for currency " + currencyId + ": " + e.getMessage());
         }
 
         return topBalances;
+    }
+
+    public CompletableFuture<List<Map.Entry<UUID, Double>>> getTopBalancesAsync(String currencyId, int limit) {
+        return CompletableFuture.supplyAsync(() -> getTopBalances(currencyId, limit));
     }
 
     public boolean resetCurrency(String currencyId) {

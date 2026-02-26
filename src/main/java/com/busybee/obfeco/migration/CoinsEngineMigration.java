@@ -164,11 +164,11 @@ public class CoinsEngineMigration {
         return false;
     }
 
-    private Map<String, Map<UUID, Double>> extractBalances(Connection conn, Set<String> knownCurrencies) throws SQLException {
+    private ExtractionResult extractBalances(Connection conn, Set<String> knownCurrencies) throws SQLException {
         return extractBalances(conn, knownCurrencies, false);
     }
 
-    private Map<String, Map<UUID, Double>> extractBalances(Connection conn, Set<String> knownCurrencies, boolean debug) throws SQLException {
+    private ExtractionResult extractBalances(Connection conn, Set<String> knownCurrencies, boolean debug) throws SQLException {
         String actualTable = resolveTable(conn);
         String uuidCol = resolveUuidColumn(conn, actualTable);
         boolean hasJson = hasJsonDataColumn(conn, actualTable);
@@ -180,11 +180,16 @@ public class CoinsEngineMigration {
         }
 
         Map<String, Map<UUID, Double>> result = new HashMap<>();
+        Map<UUID, String> names = new HashMap<>();
         List<String> allColumns = getTableColumns(conn, actualTable);
         List<String> flatCurrencyCols = new ArrayList<>();
 
+        String nameCol = null;
         for (String col : allColumns) {
             String lower = col.toLowerCase();
+            if (lower.equals("name") || lower.equals("player_name")) {
+                nameCol = col;
+            }
             if (SYSTEM_COLUMNS.contains(lower)) continue;
             if (lower.equalsIgnoreCase(uuidCol)) continue;
             if (lower.equalsIgnoreCase(DATA_COL)) continue;
@@ -195,6 +200,7 @@ public class CoinsEngineMigration {
 
         if (debug) {
             plugin.getLogger().info("[Migration-Debug] Potential flat columns: " + flatCurrencyCols);
+            plugin.getLogger().info("[Migration-Debug] Name column detected: " + (nameCol != null ? nameCol : "none"));
         }
 
         Map<String, String> mappings = plugin.getConfigManager().getMigrationMappings();
@@ -214,6 +220,11 @@ public class CoinsEngineMigration {
                     uuid = UUID.fromString(uuidStr);
                 } catch (IllegalArgumentException e) {
                     continue;
+                }
+
+                if (nameCol != null) {
+                    String name = rs.getString(nameCol);
+                    if (name != null) names.put(uuid, name);
                 }
 
                 boolean rowHasData = false;
@@ -263,7 +274,7 @@ public class CoinsEngineMigration {
         }
 
         plugin.getLogger().info("[Migration] Extracted data from " + parsedRows + " out of " + totalRows + " rows");
-        return result;
+        return new ExtractionResult(result, names);
     }
 
     private Map<String, Map<UUID, Double>> extractBalancesFromJsonColumn(Connection conn, String tableName) throws SQLException {
@@ -483,7 +494,9 @@ public class CoinsEngineMigration {
                 Map<String, CECurrencyMeta> currencyMeta = loadCurrencyMeta();
                 Set<String> knownIds = currencyMeta.isEmpty() ? null : currencyMeta.keySet();
 
-                Map<String, Map<UUID, Double>> allBalances = extractBalances(conn, knownIds, debug);
+                ExtractionResult extraction = extractBalances(conn, knownIds, debug);
+                Map<String, Map<UUID, Double>> allBalances = extraction.balances;
+                Map<UUID, String> playerNames = extraction.names;
 
                 if (allBalances.isEmpty()) {
                     plugin.getLogger().warning("[Migration] No balance data found. Check that the database has player rows.");
@@ -494,6 +507,11 @@ public class CoinsEngineMigration {
                 }
 
                 plugin.getLogger().info("[Migration] Found " + allBalances.size() + " currencies with balance data");
+                
+                if (!playerNames.isEmpty()) {
+                    plugin.getLogger().info("[Migration] Extracting " + playerNames.size() + " player names...");
+                    plugin.getDatabaseManager().batchUpdatePlayerNames(playerNames);
+                }
 
                 int totalPlayers = 0;
                 int totalCurrencies = 0;
@@ -573,7 +591,8 @@ public class CoinsEngineMigration {
                 conn = openConnection(cfg);
 
                 Map<String, CECurrencyMeta> meta = loadCurrencyMeta();
-                Map<String, Map<UUID, Double>> allBalances = extractBalances(conn, meta.isEmpty() ? null : meta.keySet(), debug);
+                ExtractionResult extraction = extractBalances(conn, meta.isEmpty() ? null : meta.keySet(), debug);
+                Map<String, Map<UUID, Double>> allBalances = extraction.balances;
 
                 Set<String> allIds = new LinkedHashSet<>();
                 allIds.addAll(meta.keySet());
@@ -631,6 +650,16 @@ public class CoinsEngineMigration {
             this.symbol = symbol;
             this.startValue = startValue;
             this.decimals = decimals;
+        }
+    }
+
+    private static class ExtractionResult {
+        final Map<String, Map<UUID, Double>> balances;
+        final Map<UUID, String> names;
+
+        ExtractionResult(Map<String, Map<UUID, Double>> balances, Map<UUID, String> names) {
+            this.balances = balances;
+            this.names = names;
         }
     }
 }

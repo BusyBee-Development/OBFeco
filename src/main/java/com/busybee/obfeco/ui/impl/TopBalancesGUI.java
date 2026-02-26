@@ -31,6 +31,9 @@ public class TopBalancesGUI extends InventoryGUI {
     private final Currency currency;
     private final int page;
 
+    private List<Map.Entry<UUID, Double>> cachedData = null;
+    private boolean loading = false;
+
     private static final int[] ENTRY_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
     private static final int PAGE_SIZE = ENTRY_SLOTS.length;
 
@@ -45,7 +48,28 @@ public class TopBalancesGUI extends InventoryGUI {
         int offset = (page - 1) * PAGE_SIZE;
         int fetchLimit = offset + PAGE_SIZE;
 
-        List<Map.Entry<UUID, Double>> topBalances = plugin.getDatabaseManager().getTopBalances(currency.getId(), fetchLimit);
+        if (cachedData == null && !loading) {
+            loading = true;
+            // Fill with loading state
+            for (int slot : ENTRY_SLOTS) {
+                this.addButton(slot, new InventoryButton()
+                    .creator(p -> createLoadingItem())
+                    .consumer(event -> {})
+                );
+            }
+            
+            plugin.getDatabaseManager().getTopBalancesAsync(currency.getId(), fetchLimit).thenAccept(data -> {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    this.cachedData = data;
+                    this.loading = false;
+                    if (player.getOpenInventory().getTopInventory().equals(getInventory())) {
+                        this.decorate(player);
+                    }
+                });
+            });
+        }
+
+        List<Map.Entry<UUID, Double>> topBalances = cachedData != null ? cachedData : new ArrayList<>();
 
         for (int i = 0; i < PAGE_SIZE; i++) {
             int dataIndex = offset + i;
@@ -53,28 +77,42 @@ public class TopBalancesGUI extends InventoryGUI {
             int rank = dataIndex + 1;
 
             if (dataIndex >= topBalances.size()) {
-                this.addButton(slot, new InventoryButton()
-                    .creator(p -> createEmptySlot())
-                    .consumer(event -> {})
-                );
+                if (!loading) {
+                    this.addButton(slot, new InventoryButton()
+                        .creator(p -> createEmptySlot())
+                        .consumer(event -> {})
+                    );
+                }
                 continue;
             }
 
             Map.Entry<UUID, Double> entry = topBalances.get(dataIndex);
             UUID entryUuid = entry.getKey();
             double balance = entry.getValue();
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
-            String playerName = offlinePlayer.getName() != null ? offlinePlayer.getName() : "Unknown";
-            String formattedBalance = plugin.getConfigManager().formatAmount(balance, currency);
-
+            
             this.addButton(slot, new InventoryButton()
-                .creator(p -> createPlayerHead(entryUuid, playerName, rank, formattedBalance))
-                .consumer(event -> {
-                    if (event.isLeftClick()) {
-                        sendCopyMessage(player, playerName, entryUuid.toString(), rank, formattedBalance);
-                    } else if (event.isRightClick()) {
-                        sendCopyMessage(player, playerName, entryUuid.toString(), rank, formattedBalance);
+                .creator(p -> {
+                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
+                    String playerName = offlinePlayer.getName();
+                    
+                    if (playerName == null) {
+                        playerName = plugin.getDatabaseManager().getPlayerName(entryUuid);
                     }
+                    if (playerName == null) {
+                        playerName = "Unknown";
+                    }
+                    
+                    String formattedBalance = plugin.getConfigManager().formatAmount(balance, currency);
+                    return createPlayerHead(entryUuid, playerName, rank, formattedBalance);
+                })
+                .consumer(event -> {
+                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
+                    String playerName = offlinePlayer.getName();
+                    if (playerName == null) playerName = plugin.getDatabaseManager().getPlayerName(entryUuid);
+                    if (playerName == null) playerName = "Unknown";
+                    
+                    String formattedBalance = plugin.getConfigManager().formatAmount(balance, currency);
+                    sendCopyMessage(player, playerName, entryUuid.toString(), rank, formattedBalance);
                 })
             );
         }
@@ -155,6 +193,18 @@ public class TopBalancesGUI extends InventoryGUI {
 
         head.setItemMeta(meta);
         return head;
+    }
+
+    private ItemStack createLoadingItem() {
+        ItemStack item = XMaterial.matchXMaterial("YELLOW_STAINED_GLASS_PANE").map(XMaterial::parseItem).orElse(XMaterial.STONE.parseItem());
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ColorUtil.colorizeToLegacy("<yellow>Loading data..."));
+        List<String> lore = new ArrayList<>();
+        lore.add(ColorUtil.colorizeToLegacy("<gray>Please wait while we fetch"));
+        lore.add(ColorUtil.colorizeToLegacy("<gray>the leaderboard data."));
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        return item;
     }
 
     private ItemStack createEmptySlot() {

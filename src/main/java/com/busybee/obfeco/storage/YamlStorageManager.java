@@ -25,6 +25,42 @@ public class YamlStorageManager {
         return new File(getDataFolder(), currencyId.toLowerCase() + ".yml");
     }
 
+    private File getPlayersFile() {
+        return new File(getDataFolder(), "players.yml");
+    }
+
+    public void updatePlayerName(UUID uuid, String name) {
+        File file = getPlayersFile();
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        config.set(uuid.toString(), name);
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to save player name for " + uuid + ": " + e.getMessage());
+        }
+    }
+
+    public void batchUpdatePlayerNames(Map<UUID, String> names) {
+        if (names.isEmpty()) return;
+        File file = getPlayersFile();
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        for (Map.Entry<UUID, String> entry : names.entrySet()) {
+            config.set(entry.getKey().toString(), entry.getValue());
+        }
+        try {
+            config.save(file);
+        } catch (IOException e) {
+            plugin.getLogger().warning("Failed to batch save player names: " + e.getMessage());
+        }
+    }
+
+    public String getPlayerName(UUID uuid) {
+        File file = getPlayersFile();
+        if (!file.exists()) return null;
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+        return config.getString(uuid.toString());
+    }
+
     public double getBalance(UUID playerId, String currencyId) {
         File file = getCurrencyFile(currencyId);
         if (!file.exists()) {
