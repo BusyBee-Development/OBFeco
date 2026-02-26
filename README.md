@@ -1,66 +1,82 @@
 # Obfeco
 
-**Obfeco** is a modern, lightweight, multi-currency economy plugin for Minecraft servers. It is designed to be efficient and flexible, supporting multiple currencies and integrating with popular plugins.
+**Obfeco** is a powerful, modern, multi-currency economy solution for Minecraft servers. Create unlimited currencies, manage them through an intuitive GUI, and enjoy seamless integration with your favorite plugins.
 
-## Features
+## ✨ Key Features
 
-*   **Multi-Currency Support:** Create and manage multiple custom currencies.
-*   **Lightweight:** Designed for performance.
-*   **Modern:** Built for Minecraft 1.20+.
-*   **Integration:** Soft dependencies on **Vault** and **PlaceholderAPI** for broad compatibility.
-*   **Management GUI:** Easy-to-use GUI for managing currencies.
-*   **Leaderboards:** View top balances.
-*   **Admin Tools:** Comprehensive commands for creating, deleting, giving, taking, setting, and resetting balances.
-*   **Migration:** Conversion tools from other economy plugins.
+*   **Unlimited Currencies:** Create as many currencies as you need (Gems, Coins, Souls, etc.).
+*   **Intuitive GUI:** Manage all your currencies and view leaderboards through an easy-to-use interface.
+*   **Robust Storage:** Choose between **YAML**, **SQLite**, or **MySQL** for high-performance data handling.
+*   **PlaceholderAPI Support:** Display balances, total economy values, and leaderboards anywhere.
+*   **Vault Integration:** Fully compatible with plugins that use Vault (requires a primary currency to be set).
+*   **Admin Tools:** Comprehensive tools for giving, taking, setting, and resetting balances.
+*   **Easy Migration:** Built-in tools to migrate from other economy plugins like CoinsEngine.
 
-## Installation
+## 🚀 Getting Started
 
 1.  Download the latest `Obfeco.jar`.
-2.  Place the jar file in your server's `plugins` folder.
-3.  (Optional) Install [Vault](https://www.spigotmc.org/resources/vault.34315/) and [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/) for full functionality.
+2.  Drop the jar file into your server's `plugins` folder.
+3.  (Highly Recommended) Install [Vault](https://www.spigotmc.org/resources/vault.34315/) and [PlaceholderAPI](https://www.spigotmc.org/resources/placeholderapi.6245/).
 4.  Restart your server.
+5.  Configure your primary currency in `config.yml` (especially for Vault support).
 
-## Commands
+## 🛠 Commands & Permissions
 
 The main command is `/obfeco`, with aliases `/eco` and `/economy`.
 
+### User Commands
+
 | Command | Description | Permission |
 | :--- | :--- | :--- |
-| `/obfeco` | Main command | `obfeco.use` |
-| `/obfeco balance [player]` | Check balance | `obfeco.balance` / `obfeco.balance.others` |
-| `/obfeco pay <player> <amount>` | Pay another player | `obfeco.pay` |
-| `/obfeco top` | View leaderboards | `obfeco.top` |
-| `/obfeco create <name>` | Create a new currency | `obfeco.create` |
-| `/obfeco delete <name>` | Delete a currency | `obfeco.delete` |
-| `/obfeco give <player> <amount>` | Give currency to a player | `obfeco.give` |
-| `/obfeco take <player> <amount>` | Take currency from a player | `obfeco.take` |
-| `/obfeco set <player> <amount>` | Set a player's balance | `obfeco.set` |
-| `/obfeco reset <player>` | Reset a player's data | `obfeco.reset` |
-| `/obfeco convert` | Convert data from other plugins | `obfeco.convert` |
-| `/obfeco reload` | Reload configuration | `obfeco.reload` |
-| `/obfeco manage` | Open currency management GUI | `obfeco.manage` |
+| `/obfeco balance [currency]` | Check your own balance | `obfeco.balance` |
+| `/obfeco balance <player> <currency>` | Check another player's balance | `obfeco.balance.others` |
+| `/obfeco pay <player> <currency> <amount>` | Pay another player | `obfeco.pay` |
+| `/obfeco top <currency> [page]` | View the leaderboard (GUI/Chat) | `obfeco.top` |
 
-## Permissions
+### Admin Commands
 
-### User Permissions
-*   `obfeco.use`: Basic command access (Default: true)
-*   `obfeco.balance`: Check own balance (Default: true)
-*   `obfeco.pay`: Pay other players (Default: true)
-*   `obfeco.top`: View leaderboards (Default: true)
+| Command | Description | Permission |
+| :--- | :--- | :--- |
+| `/obfeco manage` | Open the Currency Manager GUI | `obfeco.gui` |
+| `/obfeco create <id> <name> [start] [decimals]` | Create a new currency | `obfeco.create` |
+| `/obfeco delete <currency>` | Permanently delete a currency | `obfeco.delete` |
+| `/obfeco give <player> <currency> <amount> [-s]` | Give currency to a player | `obfeco.give` |
+| `/obfeco take <player> <currency> <amount> [-s]` | Take currency from a player | `obfeco.take` |
+| `/obfeco set <player> <currency> <amount> [-s]` | Set a player's balance | `obfeco.set` |
+| `/obfeco reset <currency> [confirm]` | Reset ALL player data for a currency | `obfeco.reset` |
+| `/obfeco scan coinsengine` | Scan for currencies to migrate | `obfeco.admin` |
+| `/obfeco convert coinsengine` | Migrate data from CoinsEngine | `obfeco.convert` |
+| `/obfeco reload` | Reload the plugin configuration | `obfeco.reload` |
 
-### Admin Permissions
-*   `obfeco.balance.others`: Check other players' balance (Default: op)
-*   `obfeco.admin`: Grants all admin sub-permissions (Default: op)
-    *   `obfeco.create`
-    *   `obfeco.delete`
-    *   `obfeco.give`
-    *   `obfeco.take`
-    *   `obfeco.set`
-    *   `obfeco.reset`
-    *   `obfeco.convert`
-    *   `obfeco.reload`
-    *   `obfeco.manage`
+*Note: Use `-s` in admin commands to perform the action silently (no notification to the target).*
 
-## Support
+## 📊 Placeholders
 
-For more information, visit the [BusyBee Discord](https://discord.gg/abdm29q7af).
+Obfeco provides a wide range of placeholders for PlaceholderAPI. Replace `<currency>` with your currency ID (e.g., `coins`).
+
+| Placeholder | Description |
+| :--- | :--- |
+| `%obfeco_<currency>%` | Raw balance of the player |
+| `%obfeco_<currency>_formatted%` | Formatted balance (e.g., 1.5k) |
+| `%obfeco_<currency>_total%` | Total amount of this currency in the economy |
+| `%obfeco_<currency>_top_name_<pos>%` | Name of the player at leaderboard position |
+| `%obfeco_<currency>_top_value_<pos>%` | Balance of the player at leaderboard position |
+
+## 📦 Storage Options
+
+Obfeco supports multiple storage types, configurable in `config.yml`:
+
+*   **YAML:** Simple file-based storage, good for very small servers.
+*   **SQLite (Default):** Efficient local database, recommended for most servers.
+*   **MySQL:** High-performance remote database, ideal for networks and large servers.
+
+## 🔄 Migration
+
+Switching from **CoinsEngine**? It's easy:
+1.  Run `/obfeco scan coinsengine` to see what can be migrated.
+2.  Run `/obfeco convert coinsengine` to migrate all currencies and player balances.
+
+## 🆘 Support
+
+Need help? Join our community:
+*   **Discord:** [BusyBee Support](https://discord.gg/abdm29q7af)

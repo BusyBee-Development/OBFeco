@@ -79,10 +79,16 @@ public class ObfecoCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(ColorUtil.colorize("<gradient:gold:yellow>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</gradient>"));
         
         if (sender.hasPermission("obfeco.balance")) {
-            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco balance <player> <currency> <gray>- Check balance"));
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco balance [currency] <gray>- Check your balance"));
+        }
+        if (sender.hasPermission("obfeco.balance.others")) {
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco balance <player> <currency> <gray>- Check others' balance"));
+        }
+        if (sender.hasPermission("obfeco.pay")) {
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco pay <player> <currency> <amount> <gray>- Pay a player"));
         }
         if (sender.hasPermission("obfeco.top")) {
-            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco top <currency> <gray>- View leaderboards"));
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco top <currency> [page] <gray>- View leaderboards"));
         }
         if (sender.hasPermission("obfeco.give")) {
             sender.sendMessage(ColorUtil.colorize("<gold>/obfeco give <player> <currency> <amount> [-s] <gray>- Give currency"));
@@ -91,13 +97,22 @@ public class ObfecoCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ColorUtil.colorize("<gold>/obfeco take <player> <currency> <amount> [-s] <gray>- Take currency"));
         }
         if (sender.hasPermission("obfeco.set")) {
-            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco set <player> <currency> <amount> <gray>- Set balance"));
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco set <player> <currency> <amount> [-s] <gray>- Set balance"));
         }
         if (sender.hasPermission("obfeco.create")) {
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco create <id> <name> [start] [decimals] <gray>- Create currency"));
+        }
+        if (sender.hasPermission("obfeco.delete")) {
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco delete <currency> <gray>- Delete currency"));
+        }
+        if (sender.hasPermission("obfeco.gui")) {
             sender.sendMessage(ColorUtil.colorize("<gold>/obfeco manage <gray>- Open currency manager GUI"));
         }
         if (sender.hasPermission("obfeco.admin")) {
-            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco scan <plugin> <gray>- Scan for currencies to migrate"));
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco scan <plugin> <gray>- Scan for migration"));
+        }
+        if (sender.hasPermission("obfeco.convert")) {
+            sender.sendMessage(ColorUtil.colorize("<gold>/obfeco convert <plugin> <gray>- Migrate data"));
         }
         if (sender.hasPermission("obfeco.reload")) {
             sender.sendMessage(ColorUtil.colorize("<gold>/obfeco reload <gray>- Reload configuration"));
