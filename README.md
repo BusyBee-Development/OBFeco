@@ -89,7 +89,6 @@ Obfeco provides a simple and powerful placeholder system. Replace `<currency>` w
 
 Obfeco supports multiple storage types, configurable in `config.yml`:
 
-*   **YAML:** Simple file-based storage, good for very small servers.
 *   **SQLite (Default):** Efficient local database, recommended for most servers.
 *   **MySQL:** High-performance remote database, ideal for networks and large servers.
 
