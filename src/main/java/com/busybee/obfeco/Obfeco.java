@@ -14,6 +14,7 @@ import com.busybee.obfeco.ui.GUIManager;
 import com.busybee.obfeco.util.LogManager;
 import com.busybee.obfeco.util.SignInput;
 import lombok.Getter;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -62,6 +63,8 @@ public class Obfeco extends JavaPlugin {
         registerCommands();
         registerListeners();
         registerHooks();
+        
+        new Metrics(this, 29485);
 
         long loadTime = System.currentTimeMillis() - startTime;
         getLogger().info("Obfeco v" + getDescription().getVersion() + " enabled in " + loadTime + "ms");
