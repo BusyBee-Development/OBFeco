@@ -92,17 +92,15 @@ public class TopBalancesGUI extends InventoryGUI {
             
             this.addButton(slot, new InventoryButton()
                 .creator(p -> {
-                    String playerName = cachedName;
-                    if (playerName == null) {
+                    String pName = entry.getName();
+                    if (pName == null) {
                         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
-                        playerName = offlinePlayer.getName();
+                        pName = offlinePlayer.getName();
                     }
-                    if (playerName == null) {
-                        playerName = "Unknown";
-                    }
+                    if (pName == null) pName = "Unknown";
                     
-                    String formattedBalance = plugin.getConfigManager().formatAmount(balance, currency);
-                    return createPlayerHead(entryUuid, playerName, rank, formattedBalance);
+                    String fBalance = plugin.getConfigManager().formatAmount(balance, currency);
+                    return createPlayerHead(p, entryUuid, pName, rank, fBalance);
                 })
                 .consumer(event -> {
                     String playerName = cachedName;
@@ -124,7 +122,7 @@ public class TopBalancesGUI extends InventoryGUI {
         this.addButton(38, new InventoryButton()
             .creator(p -> {
                 if (!hasPrev) return createFillerPane();
-                return createNavItem(XMaterial.ARROW, "<yellow>Previous Page", "<gray>Go to page " + (page - 1));
+                return createNavItem(p, XMaterial.ARROW, "<yellow>Previous Page", "<gray>Go to page " + (page - 1));
             })
             .consumer(event -> {
                 if (hasPrev) {
@@ -134,14 +132,14 @@ public class TopBalancesGUI extends InventoryGUI {
         );
 
         this.addButton(40, new InventoryButton()
-            .creator(p -> createNavItem(XMaterial.BARRIER, "<red>Close", "<gray>Close this menu"))
+            .creator(p -> createNavItem(p, XMaterial.BARRIER, "<red>Close", "<gray>Close this menu"))
             .consumer(event -> player.closeInventory())
         );
 
         this.addButton(42, new InventoryButton()
             .creator(p -> {
                 if (!hasNext) return createFillerPane();
-                return createNavItem(XMaterial.ARROW, "<yellow>Next Page", "<gray>Go to page " + (page + 1));
+                return createNavItem(p, XMaterial.ARROW, "<yellow>Next Page", "<gray>Go to page " + (page + 1));
             })
             .consumer(event -> {
                 if (hasNext) {
@@ -154,26 +152,26 @@ public class TopBalancesGUI extends InventoryGUI {
     }
 
     private void sendCopyMessage(Player player, String playerName, String uuid, int rank, String balance) {
-        player.sendMessage(ColorUtil.colorizeToLegacy("<gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"));
-        player.sendMessage(ColorUtil.colorizeToLegacy("<gold><bold>#" + rank + " " + playerName));
-        player.sendMessage(ColorUtil.colorizeToLegacy("<gray>Balance: <white>" + balance));
+        player.sendMessage(ColorUtil.colorizeToLegacy(player, "<gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"));
+        player.sendMessage(ColorUtil.colorizeToLegacy(player, "<gold><bold>#" + rank + " " + playerName));
+        player.sendMessage(ColorUtil.colorizeToLegacy(player, "<gray>Balance: <white>" + balance));
 
-        TextComponent nameComponent = new TextComponent(ColorUtil.colorizeToLegacy("<yellow>► Click to copy IGN: <white>" + playerName));
+        TextComponent nameComponent = new TextComponent(ColorUtil.colorizeToLegacy(player, "<yellow>► Click to copy IGN: <white>" + playerName));
         nameComponent.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, playerName));
         nameComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-            new ComponentBuilder(ColorUtil.colorizeToLegacy("<gray>Click to copy <white>" + playerName + " <gray>to chat")).create()));
+            new ComponentBuilder(ColorUtil.colorizeToLegacy(player, "<gray>Click to copy <white>" + playerName + " <gray>to chat")).create()));
         player.spigot().sendMessage(nameComponent);
 
-        TextComponent uuidComponent = new TextComponent(ColorUtil.colorizeToLegacy("<yellow>► Click to copy UUID: <white>" + uuid));
+        TextComponent uuidComponent = new TextComponent(ColorUtil.colorizeToLegacy(player, "<yellow>► Click to copy UUID: <white>" + uuid));
         uuidComponent.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, uuid));
         uuidComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-            new ComponentBuilder(ColorUtil.colorizeToLegacy("<gray>Click to copy UUID to chat")).create()));
+            new ComponentBuilder(ColorUtil.colorizeToLegacy(player, "<gray>Click to copy UUID to chat")).create()));
         player.spigot().sendMessage(uuidComponent);
 
-        player.sendMessage(ColorUtil.colorizeToLegacy("<gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"));
+        player.sendMessage(ColorUtil.colorizeToLegacy(player, "<gray>▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"));
     }
 
-    private ItemStack createPlayerHead(UUID uuid, String playerName, int rank, String balance) {
+    private ItemStack createPlayerHead(Player player, UUID uuid, String playerName, int rank, String balance) {
         ItemStack head = XMaterial.PLAYER_HEAD.parseItem();
         if (head == null) {
             head = new ItemStack(org.bukkit.Material.STONE);
@@ -181,14 +179,14 @@ public class TopBalancesGUI extends InventoryGUI {
 
         ItemMeta meta = head.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ColorUtil.colorizeToLegacy("<gold>#" + rank + " <white>" + playerName));
+            meta.setDisplayName(ColorUtil.colorizeToLegacy(player, "<gold>#" + rank + " <white>" + playerName));
 
             List<String> lore = new ArrayList<>();
-            lore.add(ColorUtil.colorizeToLegacy("<gray>Balance: <yellow>" + balance));
-            lore.add(ColorUtil.colorizeToLegacy("<gray>UUID: <white>" + uuid));
+            lore.add(ColorUtil.colorizeToLegacy(player, "<gray>Balance: <yellow>" + balance));
+            lore.add(ColorUtil.colorizeToLegacy(player, "<gray>UUID: <white>" + uuid));
             lore.add("");
-            lore.add(ColorUtil.colorizeToLegacy("<yellow>Left-Click <gray>to copy IGN"));
-            lore.add(ColorUtil.colorizeToLegacy("<yellow>Right-Click <gray>to copy UUID"));
+            lore.add(ColorUtil.colorizeToLegacy(player, "<yellow>Left-Click <gray>to copy IGN"));
+            lore.add(ColorUtil.colorizeToLegacy(player, "<yellow>Right-Click <gray>to copy UUID"));
             meta.setLore(lore);
 
             head.setItemMeta(meta);
@@ -224,12 +222,12 @@ public class TopBalancesGUI extends InventoryGUI {
         return item;
     }
 
-    private ItemStack createNavItem(XMaterial material, String name, String loreText) {
+    private ItemStack createNavItem(Player player, XMaterial material, String name, String loreText) {
         ItemStack item = material.parseItem();
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ColorUtil.colorizeToLegacy(name));
+        meta.setDisplayName(ColorUtil.colorizeToLegacy(player, name));
         List<String> lore = new ArrayList<>();
-        lore.add(ColorUtil.colorizeToLegacy(loreText));
+        lore.add(ColorUtil.colorizeToLegacy(player, loreText));
         meta.setLore(lore);
         item.setItemMeta(meta);
         return item;

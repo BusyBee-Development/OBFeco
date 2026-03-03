@@ -33,7 +33,7 @@ public class CurrencyManagerGUI extends InventoryGUI {
             Currency currency = currencies.get(i);
             
             this.addButton(i, new InventoryButton()
-                .creator(p -> createCurrencyItem(currency))
+                .creator(p -> createCurrencyItem(p, currency))
                 .consumer(event -> {
                     if (event.isLeftClick()) {
                         plugin.getGuiManager().openGUI(new CurrencyEditorGUI(plugin, currency), player);
@@ -55,7 +55,7 @@ public class CurrencyManagerGUI extends InventoryGUI {
         }
         
         this.addButton(49, new InventoryButton()
-            .creator(p -> createItem(XMaterial.EMERALD, 
+            .creator(p -> createItem(p, XMaterial.EMERALD, 
                 plugin.getMessageManager().getMessage("gui.currency-manager.create-button"),
                 plugin.getConfig().getStringList("gui.currency-manager.create-lore")))
             .consumer(event -> {
@@ -101,7 +101,7 @@ public class CurrencyManagerGUI extends InventoryGUI {
         );
         
         this.addButton(53, new InventoryButton()
-            .creator(p -> createItem(XMaterial.BARRIER, 
+            .creator(p -> createItem(p, XMaterial.BARRIER, 
                 plugin.getMessageManager().getMessage("gui.currency-manager.close-button"),
                 new ArrayList<>()))
             .consumer(event -> event.getWhoClicked().closeInventory())
@@ -110,15 +110,15 @@ public class CurrencyManagerGUI extends InventoryGUI {
         super.decorate(player);
     }
     
-    private ItemStack createCurrencyItem(Currency currency) {
+    private ItemStack createCurrencyItem(Player player, Currency currency) {
         ItemStack item = XMaterial.GOLD_INGOT.parseItem();
         ItemMeta meta = item.getItemMeta();
         
-        meta.setDisplayName(ColorUtil.colorizeToLegacy(currency.getDisplayName()));
+        meta.setDisplayName(ColorUtil.colorizeToLegacy(player, currency.getDisplayName()));
         
         List<String> lore = new ArrayList<>();
         for (String line : plugin.getConfig().getStringList("gui.currency-manager.currency-lore")) {
-            lore.add(ColorUtil.colorizeToLegacy(line
+            lore.add(ColorUtil.colorizeToLegacy(player, line
                 .replace("{id}", currency.getId())
                 .replace("{display}", currency.getDisplayName())
                 .replace("{starting}", String.valueOf(currency.getStartingBalance()))
@@ -131,15 +131,15 @@ public class CurrencyManagerGUI extends InventoryGUI {
         return item;
     }
     
-    private ItemStack createItem(XMaterial material, String name, List<String> lore) {
+    private ItemStack createItem(Player player, XMaterial material, String name, List<String> lore) {
         ItemStack item = material.parseItem();
         ItemMeta meta = item.getItemMeta();
         
-        meta.setDisplayName(ColorUtil.colorizeToLegacy(name));
+        meta.setDisplayName(ColorUtil.colorizeToLegacy(player, name));
         
         List<String> coloredLore = new ArrayList<>();
         for (String line : lore) {
-            coloredLore.add(ColorUtil.colorizeToLegacy(line));
+            coloredLore.add(ColorUtil.colorizeToLegacy(player, line));
         }
         meta.setLore(coloredLore);
         

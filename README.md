@@ -52,21 +52,38 @@ The main command is `/obfeco`, with aliases `/eco` and `/economy`.
 
 ## 📊 Placeholders
 
-Obfeco provides a wide range of placeholders for PlaceholderAPI. Replace `<currency>` with your currency ID (e.g., `coins`).
+Obfeco provides a simple and powerful placeholder system. Replace `<currency>` with your currency ID (e.g., `coins`).
 
+### 👤 Player Balances
 | Placeholder | Description |
 | :--- | :--- |
-| `%obfeco_<currency>%` | Raw balance of the player |
-| `%obfeco_<currency>_formatted%` | Formatted balance (e.g., 1.5k) |
-| `%obfeco_<currency>_raw%` | Raw balance of the player (Alias) |
-| `%obfeco_<currency>_total%` | Total economy value (Raw) |
-| `%obfeco_<currency>_total_formatted%` | Total economy value (Formatted) |
-| `%obfeco_<currency>_total_raw%` | Total economy value (Raw) (Alias) |
-| `%obfeco_<currency>_top_name_<pos>%` | Name of the player at leaderboard position |
-| `%obfeco_<currency>_top_formatted_<pos>%` | Balance of the player (Formatted) at position |
-| `%obfeco_<currency>_top_raw_<pos>%` | Balance of the player (Raw) at position |
-| `%obfeco_<currency>_top_value_<pos>%` | Alias for `_top_formatted_` |
-| `%obfeco_<currency>_top_rawvalue_<pos>%` | Alias for `_top_raw_` |
+| `%obfeco_<currency>_balance%` | Player's formatted balance (e.g., 1,500.50) |
+| `%obfeco_<currency>_raw%` | Player's raw numeric balance (e.g., 1500.5) |
+
+*Tip: You can also use `%obfeco_balance_<currency>%` if you prefer.*
+
+### 🏆 Leaderboards (Top Balances)
+| Placeholder | Description |
+| :--- | :--- |
+| `%obfeco_<currency>_top_name_<pos>%` | Name of the player at position (1, 2, 3...) |
+| `%obfeco_<currency>_top_balance_<pos>%` | Formatted balance at position |
+| `%obfeco_top_<pos>_<currency>%` | Quickest way to get formatted balance |
+
+**Examples:**
+- `%obfeco_coins_top_name_1%` → Name of the richest player.
+- `%obfeco_top_1_coins%` → Formatted balance of the richest player.
+- `%obfeco_coins_top_raw_1%` → Raw balance of the richest player.
+
+### 🌍 Global Currency Info
+| Placeholder | Description |
+| :--- | :--- |
+| `%obfeco_<currency>_symbol%` | The currency's symbol (e.g., $) |
+| `%obfeco_<currency>_name%` | The currency's display name |
+| `%obfeco_<currency>_total_balance%` | Total amount of this currency in the economy |
+
+---
+
+*Note: The system is very flexible and supports many aliases (like `amount` for `balance`) and different orders, but the ones above are recommended for consistency.*
 
 ## 📦 Storage Options
 

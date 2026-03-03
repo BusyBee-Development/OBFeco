@@ -133,7 +133,15 @@ public class CurrencyManager {
     }
     
     public Currency getCurrency(String currencyId) {
-        return currencies.get(currencyId);
+        if (currencyId == null) return null;
+        Currency c = currencies.get(currencyId);
+        if (c != null) return c;
+        for (Currency currency : currencies.values()) {
+            if (currency.getId().equalsIgnoreCase(currencyId)) {
+                return currency;
+            }
+        }
+        return null;
     }
     
     public Collection<Currency> getCurrencies() {
@@ -141,34 +149,55 @@ public class CurrencyManager {
     }
     
     public CompletableFuture<Double> getBalance(UUID playerId, String currencyId) {
+        Currency currency = getCurrency(currencyId);
+        String canonicalId = currency != null ? currency.getId() : currencyId;
+        
         Map<String, Double> playerBalances = balanceCache.get(playerId);
         
-        if (playerBalances != null && playerBalances.containsKey(currencyId)) {
-            return CompletableFuture.completedFuture(playerBalances.get(currencyId));
+        if (playerBalances != null && playerBalances.containsKey(canonicalId)) {
+            return CompletableFuture.completedFuture(playerBalances.get(canonicalId));
         }
         
         return CompletableFuture.supplyAsync(() -> {
-            double balance = plugin.getDatabaseManager().getBalance(playerId, currencyId);
-            balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(currencyId, balance);
+            double balance = plugin.getDatabaseManager().getBalance(playerId, canonicalId);
+            balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, balance);
             return balance;
         });
+    }
+
+    public double getBalanceSync(UUID playerId, String currencyId) {
+        Currency currency = getCurrency(currencyId);
+        String canonicalId = currency != null ? currency.getId() : currencyId;
+        
+        Map<String, Double> playerBalances = balanceCache.get(playerId);
+        
+        if (playerBalances != null && playerBalances.containsKey(canonicalId)) {
+            return playerBalances.get(canonicalId);
+        }
+        
+        double balance = plugin.getDatabaseManager().getBalance(playerId, canonicalId);
+        balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, balance);
+        return balance;
     }
     
     public CompletableFuture<Boolean> setBalance(UUID playerId, String currencyId, double amount) {
         if (amount < 0) return CompletableFuture.completedFuture(false);
         
+        Currency currency = getCurrency(currencyId);
+        String canonicalId = currency != null ? currency.getId() : currencyId;
+        
         return CompletableFuture.supplyAsync(() -> {
-            double oldBalance = balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).getOrDefault(currencyId, 0.0);
-            balanceCache.get(playerId).put(currencyId, amount);
-            markDirty(playerId, currencyId);
+            double oldBalance = balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).getOrDefault(canonicalId, 0.0);
+            balanceCache.get(playerId).put(canonicalId, amount);
+            markDirty(playerId, canonicalId);
             
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
-                CurrencyChangeEvent event = new CurrencyChangeEvent(player, currencyId, oldBalance, amount, CurrencyChangeEvent.ChangeType.SET);
+                CurrencyChangeEvent event = new CurrencyChangeEvent(player, canonicalId, oldBalance, amount, CurrencyChangeEvent.ChangeType.SET);
                 Bukkit.getPluginManager().callEvent(event);
                 
                 if (event.isCancelled()) {
-                    balanceCache.get(playerId).put(currencyId, oldBalance);
+                    balanceCache.get(playerId).put(canonicalId, oldBalance);
                     return false;
                 }
             }
@@ -179,22 +208,24 @@ public class CurrencyManager {
     public CompletableFuture<Boolean> addBalance(UUID playerId, String currencyId, double amount, boolean silent) {
         if (amount <= 0) return CompletableFuture.completedFuture(false);
         
-        return getBalance(playerId, currencyId).thenApply(currentBalance -> {
+        Currency currency = getCurrency(currencyId);
+        String canonicalId = currency != null ? currency.getId() : currencyId;
+        
+        return getBalance(playerId, canonicalId).thenApply(currentBalance -> {
             double newBalance = currentBalance + amount;
-            balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(currencyId, newBalance);
-            markDirty(playerId, currencyId);
+            balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, newBalance);
+            markDirty(playerId, canonicalId);
             
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
-                CurrencyChangeEvent event = new CurrencyChangeEvent(player, currencyId, currentBalance, newBalance, CurrencyChangeEvent.ChangeType.ADD);
+                CurrencyChangeEvent event = new CurrencyChangeEvent(player, canonicalId, currentBalance, newBalance, CurrencyChangeEvent.ChangeType.ADD);
                 Bukkit.getPluginManager().callEvent(event);
                 
                 if (event.isCancelled()) {
-                    balanceCache.get(playerId).put(currencyId, currentBalance);
+                    balanceCache.get(playerId).put(canonicalId, currentBalance);
                     return false;
                 }
                 
-                Currency currency = getCurrency(currencyId);
                 if (!silent && currency != null && currency.isNotifyGive()) {
                     player.sendMessage(ColorUtil.colorize(
                         plugin.getMessageManager().getMessage("transaction.receive")
@@ -210,24 +241,26 @@ public class CurrencyManager {
     public CompletableFuture<Boolean> removeBalance(UUID playerId, String currencyId, double amount, boolean silent) {
         if (amount <= 0) return CompletableFuture.completedFuture(false);
         
-        return getBalance(playerId, currencyId).thenApply(currentBalance -> {
+        Currency currency = getCurrency(currencyId);
+        String canonicalId = currency != null ? currency.getId() : currencyId;
+        
+        return getBalance(playerId, canonicalId).thenApply(currentBalance -> {
             if (currentBalance < amount) return false;
             
             double newBalance = currentBalance - amount;
-            balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(currencyId, newBalance);
-            markDirty(playerId, currencyId);
+            balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, newBalance);
+            markDirty(playerId, canonicalId);
             
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
-                CurrencyChangeEvent event = new CurrencyChangeEvent(player, currencyId, currentBalance, newBalance, CurrencyChangeEvent.ChangeType.REMOVE);
+                CurrencyChangeEvent event = new CurrencyChangeEvent(player, canonicalId, currentBalance, newBalance, CurrencyChangeEvent.ChangeType.REMOVE);
                 Bukkit.getPluginManager().callEvent(event);
                 
                 if (event.isCancelled()) {
-                    balanceCache.get(playerId).put(currencyId, currentBalance);
+                    balanceCache.get(playerId).put(canonicalId, currentBalance);
                     return false;
                 }
                 
-                Currency currency = getCurrency(currencyId);
                 if (!silent && currency != null && currency.isNotifyTake()) {
                     player.sendMessage(ColorUtil.colorize(
                         plugin.getMessageManager().getMessage("transaction.lose")

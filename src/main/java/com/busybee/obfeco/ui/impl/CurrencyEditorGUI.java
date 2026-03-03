@@ -30,7 +30,7 @@ public class CurrencyEditorGUI extends InventoryGUI {
     public void decorate(Player player) {
         // Display Name
         this.addButton(10, new InventoryButton()
-            .creator(p -> createItem(XMaterial.NAME_TAG, "<yellow>Display Name", 
+            .creator(p -> createItem(p, XMaterial.NAME_TAG, "<yellow>Display Name", 
                 List.of("<gray>Current: <white>" + currency.getDisplayName(), "", "<yellow>Click to change")))
             .consumer(event -> {
                 player.closeInventory();
@@ -48,7 +48,7 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
         // Symbol
         this.addButton(11, new InventoryButton()
-            .creator(p -> createItem(XMaterial.FEATHER, "<yellow>Symbol", 
+            .creator(p -> createItem(p, XMaterial.FEATHER, "<yellow>Symbol", 
                 List.of("<gray>Current: <white>" + currency.getSymbol(), "", "<yellow>Click to change")))
             .consumer(event -> {
                 player.closeInventory();
@@ -64,7 +64,7 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
         // Starting Balance
         this.addButton(12, new InventoryButton()
-            .creator(p -> createItem(XMaterial.GOLD_INGOT, "<yellow>Starting Balance", 
+            .creator(p -> createItem(p, XMaterial.GOLD_INGOT, "<yellow>Starting Balance", 
                 List.of("<gray>Current: <white>" + currency.getStartingBalance(), "", "<yellow>Click to change")))
             .consumer(event -> {
                 player.closeInventory();
@@ -84,7 +84,7 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
         // Format
         this.addButton(13, new InventoryButton()
-            .creator(p -> createItem(XMaterial.BOOK, "<yellow>Format", 
+            .creator(p -> createItem(p, XMaterial.BOOK, "<yellow>Format", 
                 List.of("<gray>Current: <white>" + currency.getFormat(), "", "<yellow>Click to change")))
             .consumer(event -> {
                 player.closeInventory();
@@ -102,7 +102,7 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
         // Use Decimals Toggle
         this.addButton(14, new InventoryButton()
-            .creator(p -> createItem(currency.isUseDecimals() ? XMaterial.LIME_DYE : XMaterial.GRAY_DYE, 
+            .creator(p -> createItem(p, currency.isUseDecimals() ? XMaterial.LIME_DYE : XMaterial.GRAY_DYE, 
                 "<yellow>Use Decimals", 
                 List.of("<gray>Status: " + (currency.isUseDecimals() ? "<green>Enabled" : "<red>Disabled"), "", "<yellow>Click to toggle")))
             .consumer(event -> {
@@ -114,7 +114,7 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
         // Notifications Toggle
         this.addButton(16, new InventoryButton()
-            .creator(p -> createItem(XMaterial.PAPER, "<yellow>Notifications", 
+            .creator(p -> createItem(p, XMaterial.PAPER, "<yellow>Notifications", 
                 List.of("<gray>Give: " + (currency.isNotifyGive() ? "<green>ON" : "<red>OFF"),
                         "<gray>Take: " + (currency.isNotifyTake() ? "<green>ON" : "<red>OFF"),
                         "", "<yellow>Click to toggle both")))
@@ -129,19 +129,19 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
         // Back Button
         this.addButton(22, new InventoryButton()
-            .creator(p -> createItem(XMaterial.ARROW, "<red>Back", List.of()))
+            .creator(p -> createItem(p, XMaterial.ARROW, "<red>Back", List.of()))
             .consumer(event -> plugin.getGuiManager().openGUI(new CurrencyManagerGUI(plugin), player))
         );
 
         super.decorate(player);
     }
 
-    private ItemStack createItem(XMaterial material, String name, List<String> lore) {
+    private ItemStack createItem(Player player, XMaterial material, String name, List<String> lore) {
         ItemStack item = material.parseItem();
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ColorUtil.colorizeToLegacy(name));
+        meta.setDisplayName(ColorUtil.colorizeToLegacy(player, name));
         List<String> coloredLore = new ArrayList<>();
-        for (String line : lore) coloredLore.add(ColorUtil.colorizeToLegacy(line));
+        for (String line : lore) coloredLore.add(ColorUtil.colorizeToLegacy(player, line));
         meta.setLore(coloredLore);
         item.setItemMeta(meta);
         return item;
