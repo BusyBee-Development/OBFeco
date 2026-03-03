@@ -21,8 +21,24 @@ public class DatabaseManager {
     private HikariDataSource dataSource;
     private YamlStorageManager yamlStorage;
     
-    private final Map<String, List<Map.Entry<UUID, Double>>> topBalancesCache = new ConcurrentHashMap<>();
+    public static class LeaderboardEntry {
+        private final UUID uuid;
+        private final double balance;
+        private final String name;
+
+        public LeaderboardEntry(UUID uuid, double balance, String name) {
+            this.uuid = uuid;
+            this.balance = balance;
+            this.name = name;
+        }
+
+        public UUID getUuid() { return uuid; }
+        public double getBalance() { return balance; }
+        public String getName() { return name; }
+    }
+    
     private final Map<String, Long> cacheTimestamps = new ConcurrentHashMap<>();
+    private final Map<String, List<LeaderboardEntry>> topBalancesExtendedCache = new ConcurrentHashMap<>();
 
     public boolean initialize() {
         String storageType = plugin.getConfigManager().getStorageType();
@@ -347,8 +363,24 @@ public class DatabaseManager {
     }
 
     public List<Map.Entry<UUID, Double>> getTopBalances(String currencyId, int limit) {
+        List<LeaderboardEntry> extended = getTopBalancesExtended(currencyId, limit);
+        List<Map.Entry<UUID, Double>> results = new ArrayList<>();
+        for (LeaderboardEntry entry : extended) {
+            results.add(new AbstractMap.SimpleEntry<>(entry.getUuid(), entry.getBalance()));
+        }
+        return results;
+    }
+
+    public List<LeaderboardEntry> getTopBalancesExtended(String currencyId, int limit) {
         if (yamlStorage != null) {
-            return yamlStorage.getTopBalances(currencyId, limit);
+            // For YAML, we still return names if we can, but it might be slower.
+            // Actually YamlStorageManager might need update too.
+            List<Map.Entry<UUID, Double>> base = yamlStorage.getTopBalances(currencyId, limit);
+            List<LeaderboardEntry> results = new ArrayList<>();
+            for (Map.Entry<UUID, Double> entry : base) {
+                results.add(new LeaderboardEntry(entry.getKey(), entry.getValue(), getPlayerName(entry.getKey())));
+            }
+            return results;
         }
 
         // Check cache
@@ -356,13 +388,18 @@ public class DatabaseManager {
         long cacheTime = plugin.getConfigManager().getTopCacheMinutes() * 60000L;
         
         if (cacheTimestamps.containsKey(cacheKey) && (System.currentTimeMillis() - cacheTimestamps.get(cacheKey)) < cacheTime) {
-            return new ArrayList<>(topBalancesCache.get(cacheKey));
+            if (topBalancesExtendedCache.containsKey(cacheKey)) {
+                return new ArrayList<>(topBalancesExtendedCache.get(cacheKey));
+            }
         }
 
         String tableName = "obfeco_" + currencyId.toLowerCase();
-        List<Map.Entry<UUID, Double>> topBalances = new ArrayList<>();
+        List<LeaderboardEntry> topBalances = new ArrayList<>();
 
-        String query = "SELECT player_uuid, balance FROM " + tableName + " ORDER BY balance DESC LIMIT ?";
+        String query = "SELECT t.player_uuid, t.balance, p.player_name " +
+                       "FROM " + tableName + " t " +
+                       "LEFT JOIN obfeco_players p ON t.player_uuid = p.player_uuid " +
+                       "ORDER BY t.balance DESC LIMIT ?";
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -372,11 +409,12 @@ public class DatabaseManager {
             while (rs.next()) {
                 UUID playerId = UUID.fromString(rs.getString("player_uuid"));
                 double balance = rs.getDouble("balance");
-                topBalances.add(new AbstractMap.SimpleEntry<>(playerId, balance));
+                String name = rs.getString("player_name");
+                topBalances.add(new LeaderboardEntry(playerId, balance, name));
             }
             
             // Update cache
-            topBalancesCache.put(cacheKey, new ArrayList<>(topBalances));
+            topBalancesExtendedCache.put(cacheKey, new ArrayList<>(topBalances));
             cacheTimestamps.put(cacheKey, System.currentTimeMillis());
             
         } catch (SQLException e) {
@@ -386,8 +424,8 @@ public class DatabaseManager {
         return topBalances;
     }
 
-    public CompletableFuture<List<Map.Entry<UUID, Double>>> getTopBalancesAsync(String currencyId, int limit) {
-        return CompletableFuture.supplyAsync(() -> getTopBalances(currencyId, limit));
+    public CompletableFuture<List<LeaderboardEntry>> getTopBalancesExtendedAsync(String currencyId, int limit) {
+        return CompletableFuture.supplyAsync(() -> getTopBalancesExtended(currencyId, limit));
     }
 
     public boolean resetCurrency(String currencyId) {
@@ -401,6 +439,11 @@ public class DatabaseManager {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(truncate)) {
             stmt.executeUpdate();
+            
+            // Invalidate cache
+            topBalancesExtendedCache.keySet().removeIf(key -> key.toLowerCase().startsWith(currencyId.toLowerCase() + ":"));
+            cacheTimestamps.keySet().removeIf(key -> key.toLowerCase().startsWith(currencyId.toLowerCase() + ":"));
+            
             return true;
         } catch (SQLException e) {
             plugin.getLogger().severe("Failed to reset currency " + currencyId + ": " + e.getMessage());

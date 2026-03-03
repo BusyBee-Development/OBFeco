@@ -2,6 +2,7 @@ package com.busybee.obfeco.ui.impl;
 
 import com.busybee.obfeco.Obfeco;
 import com.busybee.obfeco.core.Currency;
+import com.busybee.obfeco.database.DatabaseManager;
 import com.busybee.obfeco.ui.InventoryButton;
 import com.busybee.obfeco.ui.InventoryGUI;
 import com.busybee.obfeco.util.ColorUtil;
@@ -29,7 +30,7 @@ public class TopBalancesGUI extends InventoryGUI {
     private final Currency currency;
     private final int page;
 
-    private List<Map.Entry<UUID, Double>> cachedData = null;
+    private List<DatabaseManager.LeaderboardEntry> cachedData = null;
     private boolean loading = false;
 
     private static final int[] ENTRY_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34};
@@ -56,7 +57,7 @@ public class TopBalancesGUI extends InventoryGUI {
                 );
             }
             
-            plugin.getDatabaseManager().getTopBalancesAsync(currency.getId(), fetchLimit).thenAccept(data -> {
+            plugin.getDatabaseManager().getTopBalancesExtendedAsync(currency.getId(), fetchLimit).thenAccept(data -> {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     this.cachedData = data;
                     this.loading = false;
@@ -67,7 +68,7 @@ public class TopBalancesGUI extends InventoryGUI {
             });
         }
 
-        List<Map.Entry<UUID, Double>> topBalances = cachedData != null ? cachedData : new ArrayList<>();
+        List<DatabaseManager.LeaderboardEntry> topBalances = cachedData != null ? cachedData : new ArrayList<>();
 
         for (int i = 0; i < PAGE_SIZE; i++) {
             int dataIndex = offset + i;
@@ -84,17 +85,17 @@ public class TopBalancesGUI extends InventoryGUI {
                 continue;
             }
 
-            Map.Entry<UUID, Double> entry = topBalances.get(dataIndex);
-            UUID entryUuid = entry.getKey();
-            double balance = entry.getValue();
+            DatabaseManager.LeaderboardEntry entry = topBalances.get(dataIndex);
+            UUID entryUuid = entry.getUuid();
+            double balance = entry.getBalance();
+            String cachedName = entry.getName();
             
             this.addButton(slot, new InventoryButton()
                 .creator(p -> {
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
-                    String playerName = offlinePlayer.getName();
-                    
+                    String playerName = cachedName;
                     if (playerName == null) {
-                        playerName = plugin.getDatabaseManager().getPlayerName(entryUuid);
+                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
+                        playerName = offlinePlayer.getName();
                     }
                     if (playerName == null) {
                         playerName = "Unknown";
@@ -104,9 +105,11 @@ public class TopBalancesGUI extends InventoryGUI {
                     return createPlayerHead(entryUuid, playerName, rank, formattedBalance);
                 })
                 .consumer(event -> {
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
-                    String playerName = offlinePlayer.getName();
-                    if (playerName == null) playerName = plugin.getDatabaseManager().getPlayerName(entryUuid);
+                    String playerName = cachedName;
+                    if (playerName == null) {
+                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entryUuid);
+                        playerName = offlinePlayer.getName();
+                    }
                     if (playerName == null) playerName = "Unknown";
                     
                     String formattedBalance = plugin.getConfigManager().formatAmount(balance, currency);

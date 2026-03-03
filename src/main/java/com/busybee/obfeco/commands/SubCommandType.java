@@ -2,6 +2,7 @@ package com.busybee.obfeco.commands;
 
 import com.busybee.obfeco.Obfeco;
 import com.busybee.obfeco.core.Currency;
+import com.busybee.obfeco.database.DatabaseManager;
 import com.busybee.obfeco.ui.impl.CurrencyManagerGUI;
 import com.busybee.obfeco.ui.impl.TopBalancesGUI;
 import com.busybee.obfeco.util.ColorUtil;
@@ -259,19 +260,33 @@ public enum SubCommandType {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 int limit = 10;
                 int offset = (finalPage - 1) * limit;
-                List<Map.Entry<UUID, Double>> topBalances = plugin.getDatabaseManager().getTopBalances(currencyId, limit + offset);
+                List<DatabaseManager.LeaderboardEntry> topBalances = plugin.getDatabaseManager().getTopBalancesExtended(currencyId, limit + offset);
+
+                List<net.kyori.adventure.text.Component> entryLines = new ArrayList<>();
+                for (int i = offset; i < Math.min(topBalances.size(), offset + limit); i++) {
+                    DatabaseManager.LeaderboardEntry entry = topBalances.get(i);
+                    String name = entry.getName();
+                    
+                    if (name == null) {
+                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entry.getUuid());
+                        name = offlinePlayer.getName();
+                    }
+                    if (name == null) {
+                        name = "Unknown";
+                    }
+
+                    entryLines.add(ColorUtil.colorize(plugin.getMessageManager().getMessage("top.entry")
+                        .replace("{position}", String.valueOf(i + 1))
+                        .replace("{player}", name)
+                        .replace("{amount}", plugin.getConfigManager().formatAmount(entry.getBalance(), currency))));
+                }
 
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getMessage("top.header")
                         .replace("{currency}", currency.getDisplayName())));
 
-                    for (int i = offset; i < Math.min(topBalances.size(), offset + limit); i++) {
-                        Map.Entry<UUID, Double> entry = topBalances.get(i);
-                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entry.getKey());
-                        sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getMessage("top.entry")
-                            .replace("{position}", String.valueOf(i + 1))
-                            .replace("{player}", offlinePlayer.getName() != null ? offlinePlayer.getName() : "Unknown")
-                            .replace("{amount}", plugin.getConfigManager().formatAmount(entry.getValue(), currency))));
+                    for (net.kyori.adventure.text.Component line : entryLines) {
+                        sender.sendMessage(line);
                     }
 
                     sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getMessage("top.footer")));
