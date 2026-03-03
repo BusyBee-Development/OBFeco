@@ -63,7 +63,6 @@ public class CurrencyManagerGUI extends InventoryGUI {
                 
                 player.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <gray>Please enter the <yellow>Currency Name <gray>on the sign."));
 
-                // Open sign for Name
                 plugin.getSignInput().open(player, new String[]{"", "^^^^^^^^^^^^^^^", "Enter Currency", "Name Above"}, lines -> {
                     String name = lines[0].trim();
                     if (name.isEmpty()) {
@@ -71,7 +70,6 @@ public class CurrencyManagerGUI extends InventoryGUI {
                         return;
                     }
 
-                    // Strip color codes and special characters for the ID to prevent SQL errors
                     String id = name.replaceAll("(?i)§[0-9A-FK-ORX]", "")
                                     .replaceAll("[^a-zA-Z0-9_]", "")
                                     .toLowerCase();
@@ -93,8 +91,7 @@ public class CurrencyManagerGUI extends InventoryGUI {
                     
                     player.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " " + 
                         plugin.getMessageManager().getMessage("currency.created").replace("{currency}", name)));
-                    
-                    // Re-open manager GUI
+
                     Bukkit.getScheduler().runTask(plugin, () -> plugin.getGuiManager().openGUI(new CurrencyManagerGUI(plugin), player));
                 });
             })

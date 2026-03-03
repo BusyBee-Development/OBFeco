@@ -76,7 +76,6 @@ public class DatabaseManager {
 
             this.dataSource = new HikariDataSource(config);
 
-            // Create players table
             createPlayersTable();
 
             plugin.getLogger().info("Database connection established (" + storageType + ")");
@@ -126,8 +125,6 @@ public class DatabaseManager {
         if (isSQLite()) {
             createIndex = "CREATE INDEX IF NOT EXISTS " + indexName + " ON " + tableName + " (balance DESC)";
         } else {
-            // MySQL: Need to check if it exists first or use a try-catch because "IF NOT EXISTS" is for tables, not indexes in older MySQL
-            // But MariaDB and MySQL 8.0 support it. For compatibility we'll use a simpler approach or just try it.
             createIndex = "CREATE INDEX " + indexName + " ON " + tableName + " (balance DESC)";
         }
 
@@ -135,9 +132,7 @@ public class DatabaseManager {
              PreparedStatement stmt = conn.prepareStatement(createIndex)) {
             stmt.executeUpdate();
         } catch (SQLException e) {
-            // Index probably already exists in MySQL if it fails
             if (!e.getMessage().toLowerCase().contains("duplicate key") && !e.getMessage().toLowerCase().contains("already exists")) {
-                // plugin.getLogger().warning("Could not create index for " + currencyId + ": " + e.getMessage());
             }
         }
     }
@@ -236,8 +231,7 @@ public class DatabaseManager {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(createTable)) {
             stmt.executeUpdate();
-            
-            // Create index for performance
+
             createIndex(currencyId);
             
             return true;
@@ -383,7 +377,6 @@ public class DatabaseManager {
             return results;
         }
 
-        // Check cache
         String cacheKey = currencyId.toLowerCase() + ":" + limit;
         long cacheTime = plugin.getConfigManager().getTopCacheMinutes() * 60000L;
         
@@ -412,8 +405,7 @@ public class DatabaseManager {
                 String name = rs.getString("player_name");
                 topBalances.add(new LeaderboardEntry(playerId, balance, name));
             }
-            
-            // Update cache
+
             topBalancesExtendedCache.put(cacheKey, new ArrayList<>(topBalances));
             cacheTimestamps.put(cacheKey, System.currentTimeMillis());
             
@@ -439,8 +431,7 @@ public class DatabaseManager {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(truncate)) {
             stmt.executeUpdate();
-            
-            // Invalidate cache
+
             topBalancesExtendedCache.keySet().removeIf(key -> key.toLowerCase().startsWith(currencyId.toLowerCase() + ":"));
             cacheTimestamps.keySet().removeIf(key -> key.toLowerCase().startsWith(currencyId.toLowerCase() + ":"));
             

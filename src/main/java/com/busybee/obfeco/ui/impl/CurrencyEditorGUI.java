@@ -28,7 +28,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
 
     @Override
     public void decorate(Player player) {
-        // Display Name
         this.addButton(10, new InventoryButton()
             .creator(p -> createItem(p, XMaterial.NAME_TAG, "<yellow>Display Name", 
                 List.of("<gray>Current: <white>" + currency.getDisplayName(), "", "<yellow>Click to change")))
@@ -46,7 +45,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
             })
         );
 
-        // Symbol
         this.addButton(11, new InventoryButton()
             .creator(p -> createItem(p, XMaterial.FEATHER, "<yellow>Symbol", 
                 List.of("<gray>Current: <white>" + currency.getSymbol(), "", "<yellow>Click to change")))
@@ -62,7 +60,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
             })
         );
 
-        // Starting Balance
         this.addButton(12, new InventoryButton()
             .creator(p -> createItem(p, XMaterial.GOLD_INGOT, "<yellow>Starting Balance", 
                 List.of("<gray>Current: <white>" + currency.getStartingBalance(), "", "<yellow>Click to change")))
@@ -82,7 +79,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
             })
         );
 
-        // Format
         this.addButton(13, new InventoryButton()
             .creator(p -> createItem(p, XMaterial.BOOK, "<yellow>Format", 
                 List.of("<gray>Current: <white>" + currency.getFormat(), "", "<yellow>Click to change")))
@@ -100,7 +96,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
             })
         );
 
-        // Use Decimals Toggle
         this.addButton(14, new InventoryButton()
             .creator(p -> createItem(p, currency.isUseDecimals() ? XMaterial.LIME_DYE : XMaterial.GRAY_DYE, 
                 "<yellow>Use Decimals", 
@@ -112,7 +107,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
             })
         );
 
-        // Notifications Toggle
         this.addButton(16, new InventoryButton()
             .creator(p -> createItem(p, XMaterial.PAPER, "<yellow>Notifications", 
                 List.of("<gray>Give: " + (currency.isNotifyGive() ? "<green>ON" : "<red>OFF"),
@@ -127,7 +121,6 @@ public class CurrencyEditorGUI extends InventoryGUI {
             })
         );
 
-        // Back Button
         this.addButton(22, new InventoryButton()
             .creator(p -> createItem(p, XMaterial.ARROW, "<red>Back", List.of()))
             .consumer(event -> plugin.getGuiManager().openGUI(new CurrencyManagerGUI(plugin), player))

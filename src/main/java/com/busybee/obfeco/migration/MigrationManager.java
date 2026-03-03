@@ -197,7 +197,6 @@ public class MigrationManager {
                 StringBuilder resultMessage = new StringBuilder();
 
                 try (conn) {
-                    // Auto-detect table if configured table doesn't exist
                     plugin.getLogger().info("Detecting database tables...");
                     String actualTable = configTable;
                     try (ResultSet tables = conn.getMetaData().getTables(null, null, "%", new String[]{"TABLE"})) {
@@ -252,20 +251,17 @@ public class MigrationManager {
                                 uuidCol = colName;
                             }
 
-                            // Detect balance columns - support multiple formats:
-                            // 1. Old format: balance_coins, balance_gems
                             if (colNameLower.startsWith("balance_")) {
                                 String currencyName = colNameLower.substring(8);
                                 balanceColumns.put(currencyName, colName);
                                 plugin.getLogger().info("     → Detected currency (balance_ prefix): " + currencyName);
                             }
-                            // 2. New format: coins, gems, money (direct column names)
-                            // Check if column name matches any currency in our mappings
+
                             else if (currencyMappings.containsKey(colNameLower)) {
                                 balanceColumns.put(colNameLower, colName);
                                 plugin.getLogger().info("     → Detected currency (mapped): " + colNameLower);
                             }
-                            // 3. Auto-detect: numeric columns that aren't system columns
+
                             else if (!systemColumns.contains(colNameLower) &&
                                      (colType.equalsIgnoreCase("REAL") ||
                                       colType.equalsIgnoreCase("DOUBLE") ||

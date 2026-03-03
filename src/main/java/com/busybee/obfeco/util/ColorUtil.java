@@ -7,7 +7,6 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 public class ColorUtil {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();

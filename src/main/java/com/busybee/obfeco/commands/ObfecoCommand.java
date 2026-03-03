@@ -8,7 +8,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ObfecoCommand implements CommandExecutor, TabCompleter {
     private final Obfeco plugin;

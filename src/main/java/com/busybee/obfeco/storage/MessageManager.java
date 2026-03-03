@@ -28,11 +28,9 @@ public class MessageManager {
     public void reload() {
         loadMessages();
     }
-    
     public String getMessage(String path) {
         return messages.getString(path, "&cMessage not found: " + path);
     }
-    
     public String getPrefix() {
         return messages.getString("prefix", "<gold>[Obfeco]");
     }

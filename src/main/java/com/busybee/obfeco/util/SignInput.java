@@ -5,7 +5,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -32,21 +31,18 @@ public class SignInput implements Listener {
 
     public void open(Player player, String[] lines, Consumer<String[]> callback) {
         UUID uuid = player.getUniqueId();
-        
-        // Cleanup any previous sign if it exists
+
         cleanup(uuid);
         
         listeners.put(uuid, callback);
 
-        // Use a location slightly above the player
         Location loc = player.getLocation().clone();
         loc.setY(Math.min(loc.getWorld().getMaxHeight() - 1, loc.getY() + 2));
         
         Block block = loc.getBlock();
         originalBlocks.put(uuid, block.getBlockData());
         signLocations.put(uuid, loc);
-        
-        // Set the block to a sign in the world
+
         block.setType(Material.OAK_SIGN, false);
         Sign sign = (Sign) block.getState();
         
@@ -55,15 +51,13 @@ public class SignInput implements Listener {
         }
         sign.update(true, false);
 
-        // Delay opening the sign by 2 ticks to ensure client sync
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (player.isOnline()) {
                 player.openSign(sign);
             }
         }, 2L);
-        
-        // Safety timeout to revert block if player disconnects or something goes wrong
-        Bukkit.getScheduler().runTaskLater(plugin, () -> cleanup(uuid), 600L); // 30 seconds
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> cleanup(uuid), 600L);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

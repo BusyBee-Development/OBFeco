@@ -63,7 +63,6 @@ public class PlaceholderHook extends PlaceholderExpansion {
             }
         }
 
-        // 2. Try type-based: %obfeco_<type>_<currency>%
         if (parts.length >= 2) {
             String type = parts[0].toLowerCase();
             // Handle balance_<currency>, formatted_<currency>, raw_<currency>
@@ -75,16 +74,11 @@ public class PlaceholderHook extends PlaceholderExpansion {
                 }
             }
 
-            // Handle top formats:
-            // top_<pos>_<currency>_<type>
-            // top_<type>_<pos>_<currency>
-            // top_<type>_<currency>_<pos>
             if (type.equals("top") && parts.length >= 3) {
                 int position = -1;
                 String currencySearch = null;
                 String remainingType = "value";
 
-                // Look for position
                 for (int i = 1; i < parts.length; i++) {
                     try {
                         position = Integer.parseInt(parts[i]);
@@ -93,12 +87,9 @@ public class PlaceholderHook extends PlaceholderExpansion {
                 }
 
                 if (position != -1) {
-                    // Try to find currency and type
                     for (int i = 1; i < parts.length; i++) {
                         String part = parts[i];
                         if (part.equals(String.valueOf(position))) continue;
-
-                        // Try if this part (and subsequent) is a currency
                         for (int j = parts.length; j > i; j--) {
                             StringBuilder sb = new StringBuilder();
                             for (int k = i; k < j; k++) {
@@ -109,12 +100,11 @@ public class PlaceholderHook extends PlaceholderExpansion {
                             Currency testCurrency = plugin.getCurrencyManager().getCurrency(testId);
                             if (testCurrency != null) {
                                 currencySearch = testCurrency.getId();
-                                // Determine type from other parts
                                 StringBuilder typeBuilder = new StringBuilder();
                                 for (int k = 1; k < parts.length; k++) {
-                                    if (k >= i && k < j) continue; // Skip currency
-                                    if (k == 0) continue; // Skip "top"
-                                    if (parts[k].equals(String.valueOf(position))) continue; // Skip position
+                                    if (k >= i && k < j) continue;
+                                    if (k == 0) continue;
+                                    if (parts[k].equals(String.valueOf(position))) continue;
                                     
                                     if (typeBuilder.length() > 0) typeBuilder.append("_");
                                     typeBuilder.append(parts[k]);
@@ -176,14 +166,12 @@ public class PlaceholderHook extends PlaceholderExpansion {
                 int position = -1;
 
                 if (topParts.length == 2) {
-                    // %obfeco_<currency>_top_<pos>%
                     try {
                         position = Integer.parseInt(topParts[1]);
                     } catch (NumberFormatException e) {
                         return null;
                     }
                 } else {
-                    // %obfeco_<currency>_top_<pos>_<type>% or %obfeco_<currency>_top_<type>_<pos>%
                     String p1 = topParts[1];
                     String p2 = topParts[2];
                     try {

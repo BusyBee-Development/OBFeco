@@ -163,8 +163,6 @@ public class YamlStorageManager {
     }
 
     public boolean createCurrencyTable(String currencyId) {
-        // For YAML storage, we don't need to pre-create files
-        // They'll be created when the first balance is set
         return true;
     }
 
