@@ -28,7 +28,7 @@ permissions:
     default: op
   obfeco.pay:
     description: Pay other players
-    default: true
+    default: false
   obfeco.top:
     description: View leaderboards
     default: true
