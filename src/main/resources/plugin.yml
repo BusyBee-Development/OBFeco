@@ -1,6 +1,6 @@
 name: Obfeco
 version: ${project.version}
-main: com.busybee.obfeco.Obfeco
+main: net.busybee.obfeco.Obfeco
 api-version: '1.17'
 author: BusyBee
 description: Modern lightweight multi-currency economy plugin
