@@ -109,6 +109,7 @@ Switching from **CoinsEngine**? It's easy:
 Obfeco allows fine-tuning through `config.yml`. Key options include:
 
 *   **Storage:** Switch between `SQLITE` and `MYSQL`.
+*   **Logging:** Control console output and file logging. Use `console: false` to silence the console.
 *   **Formatting:** Customize how large numbers are displayed (e.g., using `k`, `M`, `B` suffixes).
 *   **Vault:** Define the `primary-currency` that Vault-based plugins will use.
 *   **Caching:** Adjust cache intervals and auto-save settings for optimal performance.

@@ -45,8 +45,11 @@ public class Obfeco extends JavaPlugin {
         this.messageManager = new MessageManager(this);
         this.logManager = new LogManager(this);
 
-        if (!configManager.isLoggingEnabled() || !configManager.isConsoleEnabled()) {
+        if (!configManager.isConsoleEnabled()) {
+            getLogger().setLevel(java.util.logging.Level.OFF);
             silenceLibraries();
+        } else {
+            getLogger().setLevel(java.util.logging.Level.INFO);
         }
         
         this.databaseManager = new DatabaseManager(this);
@@ -125,20 +128,52 @@ public class Obfeco extends JavaPlugin {
 
     private void silenceLibraries() {
         try {
-            // Silence HikariCP
-            java.util.logging.Logger.getLogger("com.zaxxer.hikari").setLevel(java.util.logging.Level.WARNING);
-            java.util.logging.Logger.getLogger("com.busybee.obfeco.libs.hikari").setLevel(java.util.logging.Level.WARNING);
-            
-            // Silence bStats
-            java.util.logging.Logger.getLogger("org.bstats").setLevel(java.util.logging.Level.WARNING);
-            java.util.logging.Logger.getLogger("com.busybee.obfeco.libs.bstats").setLevel(java.util.logging.Level.WARNING);
+            // Loggers to silence at WARNING level
+            String[] warningLoggers = {
+                "com.zaxxer.hikari",
+                "org.bstats",
+                "com.busybee.obfeco.libs",
+                "org.sqlite",
+                "com.mysql",
+                "com.busybee.obfeco.libs.hikari",
+                "com.busybee.obfeco.libs.bstats",
+                "com.busybee.obfeco.libs.slf4j",
+                "com.busybee.obfeco.libs.caffeine"
+            };
+
+            // 1. JUL Silencing
+            for (String name : warningLoggers) {
+                java.util.logging.Logger.getLogger(name).setLevel(java.util.logging.Level.WARNING);
+            }
+            // Plugin logger itself
+            getLogger().setLevel(java.util.logging.Level.OFF);
+
+            // 2. Log4j2 Silencing (for Paper/Velocity)
+            try {
+                Class<?> levelClass = Class.forName("org.apache.logging.log4j.Level");
+                Object warnLevel = levelClass.getField("WARN").get(null);
+                Object offLevel = levelClass.getField("OFF").get(null);
+                Class<?> configuratorClass = Class.forName("org.apache.logging.log4j.core.config.Configurator");
+                java.lang.reflect.Method setLevelMethod = configuratorClass.getMethod("setLevel", String.class, levelClass);
+
+                // Silence libraries at WARN
+                for (String name : warningLoggers) {
+                    setLevelMethod.invoke(null, name, warnLevel);
+                }
+                // Silence plugin itself at OFF
+                setLevelMethod.invoke(null, getName(), offLevel);
+                setLevelMethod.invoke(null, "Obfeco", offLevel);
+            } catch (Throwable ignored) {}
         } catch (Exception ignored) {}
     }
     
     public void reload() {
         this.configManager.reload();
-        if (!configManager.isLoggingEnabled() || !configManager.isConsoleEnabled()) {
+        if (!configManager.isConsoleEnabled()) {
+            getLogger().setLevel(java.util.logging.Level.OFF);
             silenceLibraries();
+        } else {
+            getLogger().setLevel(java.util.logging.Level.INFO);
         }
         this.messageManager.reload();
         this.currencyManager.loadCurrencies();

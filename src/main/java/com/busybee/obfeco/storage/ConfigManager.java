@@ -84,9 +84,9 @@ public class ConfigManager {
         this.placeholderEnabled = config.getBoolean("placeholder.enabled", true);
         this.topCacheMinutes = config.getInt("placeholder.top-cache-minutes", 5);
 
-        this.loggingEnabled = config.getBoolean("logging.enabled", true);
-        this.consoleEnabled = config.getBoolean("logging.console-enabled", true);
-        this.fileEnabled = config.getBoolean("logging.file-enabled", true);
+        this.consoleEnabled = config.getBoolean("logging.console", config.getBoolean("logging.console-enabled", config.getBoolean("logging.console-notifications", config.getBoolean("logging.enabled", true))));
+        this.fileEnabled = config.getBoolean("logging.file", config.getBoolean("logging.file-enabled", true));
+        this.loggingEnabled = this.consoleEnabled || this.fileEnabled;
         this.adminTransactions = config.getBoolean("logging.admin-transactions", true);
         this.userTransactions = config.getBoolean("logging.user-transactions", true);
 

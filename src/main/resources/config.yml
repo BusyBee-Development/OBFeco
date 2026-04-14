@@ -32,12 +32,13 @@ placeholder:
   top-cache-minutes: 5
 
 logging:
-  enabled: true
-  console-enabled: false
-  file-enabled: true
+  # Turn off all console print from the plugin
+  console: false
+
+  # Keep transaction logs in files
+  file: true
   admin-transactions: true
   user-transactions: true
-
 gui:
   currency-manager:
     title: "Currency Manager"
