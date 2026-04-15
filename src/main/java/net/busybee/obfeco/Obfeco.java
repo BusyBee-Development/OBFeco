@@ -1,5 +1,6 @@
 package net.busybee.obfeco;
 
+import fr.mrmicky.fastinv.FastInvManager;
 import net.busybee.obfeco.api.ObfecoAPI;
 import net.busybee.obfeco.commands.ObfecoCommand;
 import net.busybee.obfeco.core.CurrencyManager;
@@ -9,8 +10,6 @@ import net.busybee.obfeco.hooks.VaultHook;
 import net.busybee.obfeco.listeners.PlayerListener;
 import net.busybee.obfeco.storage.ConfigManager;
 import net.busybee.obfeco.storage.MessageManager;
-import net.busybee.obfeco.ui.GUIListener;
-import net.busybee.obfeco.ui.GUIManager;
 import net.busybee.obfeco.util.LogManager;
 import net.busybee.obfeco.util.SignInput;
 import lombok.Getter;
@@ -27,7 +26,6 @@ public class Obfeco extends JavaPlugin {
     private MessageManager messageManager;
     private DatabaseManager databaseManager;
     private CurrencyManager currencyManager;
-    private GUIManager guiManager;
     private LogManager logManager;
     private ObfecoAPI api;
     private SignInput signInput;
@@ -61,8 +59,7 @@ public class Obfeco extends JavaPlugin {
         
         this.currencyManager = new CurrencyManager(this);
         this.currencyManager.initialize();
-        
-        this.guiManager = new GUIManager();
+
         this.signInput = new SignInput(this);
         
         this.api = new ObfecoAPI(this);
@@ -72,6 +69,8 @@ public class Obfeco extends JavaPlugin {
         registerHooks();
         
         new Metrics(this, 29485);
+
+        FastInvManager.register(this);
 
         long loadTime = System.currentTimeMillis() - startTime;
         info("Obfeco v" + getDescription().getVersion() + " enabled in " + loadTime + "ms");
@@ -91,7 +90,7 @@ public class Obfeco extends JavaPlugin {
         if (this.vaultHook != null) {
             this.vaultHook.unhook();
         }
-        
+
         info("Obfeco disabled");
     }
     
@@ -103,7 +102,6 @@ public class Obfeco extends JavaPlugin {
     
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
-        Bukkit.getPluginManager().registerEvents(new GUIListener(guiManager), this);
     }
     
     private void registerHooks() {

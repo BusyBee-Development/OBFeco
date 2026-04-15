@@ -3,11 +3,11 @@ package net.busybee.obfeco.commands;
 import net.busybee.obfeco.Obfeco;
 import net.busybee.obfeco.core.Currency;
 import net.busybee.obfeco.database.DatabaseManager;
-import net.busybee.obfeco.ui.impl.CurrencyManagerGUI;
-import net.busybee.obfeco.ui.impl.TopBalancesGUI;
+import net.busybee.obfeco.migration.CoinsEngineImporter;
+import net.busybee.obfeco.ui.CurrencyManagerGUI;
+import net.busybee.obfeco.ui.TopBalancesGUI;
 import net.busybee.obfeco.util.ColorUtil;
 import lombok.Getter;
-import net.busybee.obfeco.migration.CoinsEngineMigration;
 import net.busybee.obfeco.migration.CurrencyScanResult;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -253,9 +253,7 @@ public enum SubCommandType {
 
             if (sender instanceof Player && sender.hasPermission("obfeco.top.gui")) {
                 Player player = (Player) sender;
-                TopBalancesGUI gui = new TopBalancesGUI(plugin, currency, finalPage);
-                gui.decorate(player);
-                plugin.getGuiManager().openGUI(gui, player);
+                new TopBalancesGUI(plugin, currency, page).open(player);
                 return;
             }
 
@@ -679,9 +677,10 @@ public enum SubCommandType {
                 return;
             }
 
-            CoinsEngineMigration migration = new CoinsEngineMigration(plugin);
+            //CoinsEngineMigration migration = new CoinsEngineMigration(plugin);
+            CoinsEngineImporter importer = new CoinsEngineImporter(plugin);
 
-            if (!migration.isCoinsEngineAvailable()) {
+            if (!importer.isCoinsEngineAvailable()) {
                 sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>CoinsEngine plugin not found!"));
                 sender.sendMessage(ColorUtil.colorize("<gray>Make sure CoinsEngine is installed and enabled."));
                 return;
@@ -690,7 +689,7 @@ public enum SubCommandType {
             boolean debug = args.length > 1 && args[1].equalsIgnoreCase("debug");
             sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>Scanning CoinsEngine currencies..."));
 
-            migration.scanCurrenciesDetailed(debug).thenAccept(results -> {
+            importer.scanCurrenciesDetailed(debug).thenAccept(results -> {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (results.isEmpty()) {
                         sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>No currencies found in CoinsEngine."));
@@ -700,8 +699,8 @@ public enum SubCommandType {
                             String status = result.isAlreadyExists() ? "<gray>[Exists]" : "<green>[New]";
                             String decimals = result.isUseDecimals() ? "decimals" : "no decimals";
                             sender.sendMessage(ColorUtil.colorize("  " + status + " <white>" + result.getId() +
-                                " <gray>- <white>" + result.getName() +
-                                " <gray>(" + result.getSymbol() + ", start: " + result.getStartingBalance() + ", " + decimals + ")"));
+                                    " <gray>- <white>" + result.getName() +
+                                    " <gray>(" + result.getSymbol() + ", start: " + result.getStartingBalance() + ", " + decimals + ")"));
                         }
                         sender.sendMessage(ColorUtil.colorize("<gray>"));
                         sender.sendMessage(ColorUtil.colorize("<yellow>Use <white>/obfeco convert coinsengine</white> to migrate player balances."));
@@ -736,9 +735,9 @@ public enum SubCommandType {
                 return;
             }
 
-            CoinsEngineMigration migration = new CoinsEngineMigration(plugin);
+            CoinsEngineImporter importer = new CoinsEngineImporter(plugin);
 
-            if (!migration.isCoinsEngineAvailable()) {
+            if (!importer.isCoinsEngineAvailable()) {
                 sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>CoinsEngine plugin not found!"));
                 sender.sendMessage(ColorUtil.colorize("<gray>Make sure CoinsEngine is installed and enabled."));
                 return;
@@ -748,17 +747,17 @@ public enum SubCommandType {
             sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <yellow>Starting CoinsEngine migration..."));
             sender.sendMessage(ColorUtil.colorize("<gray>This may take a few moments depending on player count."));
 
-            migration.migrate(debug, (success, playersProcessed, currenciesMigrated, details) -> {
-                if (success) {
+            importer.processMigration().thenAccept(importResult -> {
+                if (importResult.players() != 0) {
                     sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <green>Migration complete!"));
-                    sender.sendMessage(ColorUtil.colorize("<gray>Players processed: <white>" + playersProcessed));
-                    sender.sendMessage(ColorUtil.colorize("<gray>Currencies migrated: <white>" + currenciesMigrated));
-                    if (!details.isEmpty()) {
-                        sender.sendMessage(ColorUtil.colorize("<gray>Details:" + details));
+                    sender.sendMessage(ColorUtil.colorize("<gray>Players processed: <white>" + importResult.players()));
+                    sender.sendMessage(ColorUtil.colorize("<gray>Currencies migrated: <white>" + importResult.currencies()));
+                    if (!importResult.details().isEmpty()) {
+                        sender.sendMessage(ColorUtil.colorize("<gray>Details:" + importResult.details()));
                     }
                 } else {
                     sender.sendMessage(ColorUtil.colorize(plugin.getMessageManager().getPrefix() + " <red>Migration failed!"));
-                    sender.sendMessage(ColorUtil.colorize("<gray>Error: <white>" + details));
+                    sender.sendMessage(ColorUtil.colorize("<gray>Error: <white>" + importResult.details()));
                 }
             });
         },
@@ -788,8 +787,7 @@ public enum SubCommandType {
             }
 
             Player player = (Player) sender;
-            CurrencyManagerGUI gui = new CurrencyManagerGUI(plugin);
-            plugin.getGuiManager().openGUI(gui, player);
+            new CurrencyManagerGUI(plugin).open(player);
         },
         (plugin, sender, args) -> Collections.emptyList());
 

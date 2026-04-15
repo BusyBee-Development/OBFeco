@@ -149,6 +149,12 @@
             <version>3.2.1</version>
             <scope>compile</scope>
         </dependency>
+
+        <dependency>
+            <groupId>fr.mrmicky</groupId>
+            <artifactId>fastinv</artifactId>
+            <version>3.1.2</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -208,6 +214,10 @@
                                 <relocation>
                                     <pattern>org.bstats</pattern>
                                     <shadedPattern>net.busybee.obfeco.libs.bstats</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>fr.mrmicky.fastinv</pattern>
+                                    <shadedPattern>net.busybee.obfeco.libs.fastinv</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>
