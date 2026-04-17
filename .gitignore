@@ -57,7 +57,7 @@ bin/
 /dist/
 /nbdist/
 /.nb-gradle/
-
+/docs/
 # VS Code
 .vscode/
 

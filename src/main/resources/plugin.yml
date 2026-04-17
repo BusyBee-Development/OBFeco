@@ -1,7 +1,8 @@
 name: Obfeco
 version: ${project.version}
 main: net.busybee.obfeco.Obfeco
-api-version: '1.17'
+folia-supported: true
+api-version: '1.21'
 author: BusyBee
 description: Modern lightweight multi-currency economy plugin
 website: https://github.com/BusyBee/Obfeco
@@ -31,7 +32,7 @@ permissions:
     default: false
   obfeco.top:
     description: View leaderboards
-    default: true
+    default: false
   obfeco.top.gui:
     description: View leaderboards via GUI
     default: op
