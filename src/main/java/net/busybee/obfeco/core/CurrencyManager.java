@@ -4,6 +4,7 @@ import net.busybee.obfeco.Obfeco;
 import net.busybee.obfeco.api.events.CurrencyChangeEvent;
 import net.busybee.obfeco.util.ColorUtil;
 import lombok.RequiredArgsConstructor;
+import net.busybee.obfeco.util.FoliaUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -23,7 +24,7 @@ public class CurrencyManager {
     private final Map<UUID, Map<String, Double>> balanceCache = new ConcurrentHashMap<>();
     private final Map<String, Set<UUID>> dirtyPlayersByCurrency = new ConcurrentHashMap<>();
     
-    private BukkitTask batchSaveTask;
+    private FoliaUtil.SchedulerTask batchSaveTask;
     
     public void initialize() {
         loadCurrencies();
@@ -210,7 +211,7 @@ public class CurrencyManager {
                 return CompletableFuture.completedFuture(true);
             } else {
                 CompletableFuture<Boolean> resultFuture = new CompletableFuture<>();
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                FoliaUtil.run(plugin, () -> {
                     balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, amount);
                     markDirty(playerId, canonicalId);
                     
@@ -262,7 +263,7 @@ public class CurrencyManager {
                 return CompletableFuture.completedFuture(true);
             } else {
                 CompletableFuture<Boolean> resultFuture = new CompletableFuture<>();
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                FoliaUtil.run(plugin, () -> {
                     double newBalance = currentBalance + amount;
                     balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, newBalance);
                     markDirty(playerId, canonicalId);
@@ -324,7 +325,7 @@ public class CurrencyManager {
                 return CompletableFuture.completedFuture(true);
             } else {
                 CompletableFuture<Boolean> resultFuture = new CompletableFuture<>();
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                FoliaUtil.run(plugin, () -> {
                     double newBalance = currentBalance - amount;
                     balanceCache.computeIfAbsent(playerId, k -> new ConcurrentHashMap<>()).put(canonicalId, newBalance);
                     markDirty(playerId, canonicalId);
@@ -392,7 +393,7 @@ public class CurrencyManager {
     private void startBatchSaveTask() {
         int interval = plugin.getConfigManager().getBatchSaveInterval() * 20;
         
-        this.batchSaveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+        this.batchSaveTask = FoliaUtil.runTimerAsync(plugin, () -> {
             for (String currencyId : currencies.keySet()) {
                 Set<UUID> dirty = dirtyPlayersByCurrency.get(currencyId);
                 if (dirty == null || dirty.isEmpty()) continue;

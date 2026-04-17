@@ -51,13 +51,13 @@ public class SignInput implements Listener {
         }
         sign.update(true, false);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        FoliaUtil.runLater(plugin, () -> {
             if (player.isOnline()) {
                 player.openSign(sign);
             }
         }, 2L);
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> cleanup(uuid), 600L);
+        FoliaUtil.runLater(plugin, () -> cleanup(uuid), 600L);
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

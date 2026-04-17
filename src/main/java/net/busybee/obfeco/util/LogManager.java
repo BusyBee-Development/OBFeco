@@ -34,7 +34,7 @@ public class LogManager {
         String formattedAmount = String.valueOf(amount);
         String message = String.format("[%s] %s %s %s %s to %s", timestamp, actor, action, formattedAmount, currency, target);
 
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        FoliaUtil.runAsync(plugin, () -> {
             try (FileWriter fw = new FileWriter(logFile, true);
                  PrintWriter pw = new PrintWriter(fw)) {
                 pw.println(message);
