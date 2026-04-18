@@ -170,6 +170,7 @@ public final class CurrencyManagerGUI extends FastInv {
                     .replace("{id}", currency.getId())
                     .replace("{display}", currency.getDisplayName())
                     .replace("{starting}", String.valueOf(currency.getStartingBalance()))
+                    .replace("{decimals}", currency.isUseDecimals() ? "<green>Enabled" : "<red>Disabled")
                     .replace("{notify-give}", String.valueOf(currency.isNotifyGive()))
                     .replace("{notify-take}", String.valueOf(currency.isNotifyTake()))));
         }
