@@ -23,16 +23,16 @@ permissions:
     default: true
   obfeco.balance:
     description: Check own balance
-    default: false
+    default: op
   obfeco.balance.others:
     description: Check other players balance
     default: op
   obfeco.pay:
     description: Pay other players
-    default: false
+    default: op
   obfeco.top:
     description: View leaderboards
-    default: false
+    default: op
   obfeco.top.gui:
     description: View leaderboards via GUI
     default: op
