@@ -54,3 +54,9 @@ gui:
       - ""
       - "<yellow>Left-Click to edit"
       - "<red>Right-Click to delete"
+
+update-notifier:
+  - "<gold>[Obfeco]</gold> <yellow>A new update is available!</yellow>"
+  - "<gray>Current version: <red><current_version></red></gray>"
+  - "<gray>New version: <green><new_version></green></gray>"
+  - "<aqua>Download here: <click:open_url:'https://modrinth.com/plugin/obfeco'><u>Modrinth</u></click></aqua>"
