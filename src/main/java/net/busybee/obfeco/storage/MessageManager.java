@@ -28,6 +28,9 @@ public class MessageManager {
     public void reload() {
         loadMessages();
     }
+    public FileConfiguration getConfig() {
+        return messages;
+    }
     public String getMessage(String path) {
         return messages.getString(path, "&cMessage not found: " + path);
     }
