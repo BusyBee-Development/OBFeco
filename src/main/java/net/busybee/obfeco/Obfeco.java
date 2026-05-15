@@ -12,6 +12,7 @@ import net.busybee.obfeco.storage.ConfigManager;
 import net.busybee.obfeco.storage.MessageManager;
 import net.busybee.obfeco.util.LogManager;
 import net.busybee.obfeco.util.SignInput;
+import net.busybee.obfeco.util.VersionCheck;
 import lombok.Getter;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -102,6 +103,7 @@ public class Obfeco extends JavaPlugin {
     
     private void registerListeners() {
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        Bukkit.getPluginManager().registerEvents(new VersionCheck(this), this);
     }
     
     private void registerHooks() {
