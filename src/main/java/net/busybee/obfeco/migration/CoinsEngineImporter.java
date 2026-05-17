@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import net.busybee.obfeco.Obfeco;
 import net.busybee.obfeco.core.Currency;
 import net.busybee.obfeco.util.HikariDataSourceBuilder;
+import java.util.logging.Level;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
@@ -37,7 +38,7 @@ public final class CoinsEngineImporter {
                 return result;
 
             } catch (Exception e) {
-                e.printStackTrace();
+                plugin.getLogger().log(Level.SEVERE, "Failed to process CoinsEngine migration", e);
                 return new ImportResult(0, 0, null);
             }
         });
@@ -120,7 +121,7 @@ public final class CoinsEngineImporter {
 
                 return results;
             } catch (Exception exception) {
-                exception.printStackTrace();
+                plugin.getLogger().log(Level.SEVERE, "Failed to scan CoinsEngine currencies", exception);
                 return Collections.emptyList();
             }
         });

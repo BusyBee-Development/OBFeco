@@ -5,6 +5,7 @@ import net.busybee.obfeco.api.events.CurrencyChangeEvent;
 import net.busybee.obfeco.util.ColorUtil;
 import lombok.RequiredArgsConstructor;
 import net.busybee.obfeco.util.FoliaUtil;
+import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -93,7 +94,7 @@ public class CurrencyManager {
         try {
             config.save(file);
         } catch (IOException e) {
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Failed to create default currency file", e);
         }
     }
 
@@ -115,7 +116,7 @@ public class CurrencyManager {
         try {
             config.save(file);
         } catch (IOException e) {
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Failed to save currency " + currency.getId(), e);
         }
     }
     

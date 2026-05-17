@@ -7,6 +7,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.RequiredArgsConstructor;
 
+import java.util.logging.Level;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -80,8 +81,7 @@ public class DatabaseManager {
             plugin.info("Database connection established (" + storageType + ")");
             return true;
         } catch (Exception e) {
-            plugin.getLogger().severe("Failed to initialize database: " + e.getMessage());
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Failed to initialize database", e);
             return false;
         }
     }
@@ -235,8 +235,7 @@ public class DatabaseManager {
             
             return true;
         } catch (SQLException e) {
-            plugin.getLogger().severe("Failed to create table for currency " + currencyId + ": " + e.getMessage());
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Failed to create table for currency " + currencyId, e);
             return false;
         }
     }
@@ -317,8 +316,7 @@ public class DatabaseManager {
             stmt.setLong(3, timestamp);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            plugin.getLogger().warning("Failed to set balance for " + playerId + " in currency " + currencyId + ": " + e.getMessage());
-            e.printStackTrace();
+            plugin.getLogger().log(Level.WARNING, "Failed to set balance for " + playerId + " in currency " + currencyId, e);
         }
     }
 
@@ -350,8 +348,7 @@ public class DatabaseManager {
             conn.commit();
             plugin.info("[DB] Wrote " + balances.size() + " balances for currency: " + currencyId);
         } catch (SQLException e) {
-            plugin.getLogger().severe("Failed to batch save balances for currency " + currencyId + ": " + e.getMessage());
-            e.printStackTrace();
+            plugin.getLogger().log(Level.SEVERE, "Failed to batch save balances for currency " + currencyId, e);
         }
     }
 
