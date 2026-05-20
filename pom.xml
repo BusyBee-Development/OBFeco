@@ -6,7 +6,7 @@
 
     <groupId>net.busybee</groupId>
     <artifactId>obfeco</artifactId>
-    <version>2026.5.0</version>
+    <version>2026.5.1</version>
     <packaging>jar</packaging>
 
     <name>Obfeco</name>
@@ -46,6 +46,10 @@
         <repository>
             <id>CodeMC</id>
             <url>https://repo.codemc.io/repository/maven-public/</url>
+        </repository>
+        <repository>
+            <id>faststats-releases</id>
+            <url>https://repo.faststats.dev/releases</url>
         </repository>
     </repositories>
 
@@ -126,6 +130,12 @@
             <artifactId>fastinv</artifactId>
             <version>3.1.2</version>
         </dependency>
+
+        <dependency>
+            <groupId>dev.faststats.metrics</groupId>
+            <artifactId>bukkit</artifactId>
+            <version>0.22.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -134,6 +144,16 @@
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
+                <includes>
+                    <include>**/*.yml</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>**/*.yml</exclude>
+                </excludes>
             </resource>
         </resources>
         <plugins>
@@ -156,7 +176,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -165,10 +185,11 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <minimizeJar>true</minimizeJar>
                             <relocations>
                                 <relocation>
                                     <pattern>com.cryptomorin.xseries</pattern>
-                                    <shadedPattern>net.busybee.obfeco.utils.xseries</shadedPattern>
+                                    <shadedPattern>net.busybee.obfeco.libs.xseries</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.zaxxer.hikari</pattern>
@@ -190,7 +211,25 @@
                                     <pattern>fr.mrmicky.fastinv</pattern>
                                     <shadedPattern>net.busybee.obfeco.libs.fastinv</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>dev.faststats</pattern>
+                                    <shadedPattern>net.busybee.obfeco.libs.faststats</shadedPattern>
+                                </relocation>
                             </relocations>
+                            <filters>
+                                <filter>
+                                    <artifact>org.bstats:*</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                                <filter>
+                                    <artifact>dev.faststats.metrics:*</artifact>
+                                    <includes>
+                                        <include>**</include>
+                                    </includes>
+                                </filter>
+                            </filters>
                         </configuration>
                     </execution>
                 </executions>

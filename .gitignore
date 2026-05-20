@@ -1,71 +1,50 @@
-# Compiled class files
+# Java
 *.class
-
-# Log files
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files
 *.jar
 *.war
-*.nar
 *.ear
-*.zip
-*.tar.gz
-*.rar
-
-# Virtual machine crash logs
 hs_err_pid*
-replay_pid*
 
-# Maven
+# Build Tools
 target/
-lib/
-manifest.kod
+build/
+dist/
 pom.xml.tag
-obfeco.iml
 pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
 release.properties
 dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
+.nb-gradle/
 
 # IntelliJ IDEA
 .idea/
-*.iws
 *.iml
 *.ipr
+*.iws
 out/
 
 # Eclipse
-.classpath
 .project
+.classpath
 .settings/
-bin/
 
 # NetBeans
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-/docs/
-# VS Code
-.vscode/
+nbproject/private/
+nbbuild/
+nbdist/
 
-# macOS
+# OS-specific
 .DS_Store
-
-# Windows
 Thumbs.db
-ehthumbs.db
-Desktop.ini
-.idea
+
+# Logs
+*.log
+
+# Project Specific
+.env
+.env.*
+lib/
+docs/
+src/main/resources/faststats.properties
+src/main/resources/bstats.properties
