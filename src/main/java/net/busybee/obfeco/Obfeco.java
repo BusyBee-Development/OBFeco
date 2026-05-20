@@ -10,11 +10,12 @@ import net.busybee.obfeco.hooks.VaultHook;
 import net.busybee.obfeco.listeners.PlayerListener;
 import net.busybee.obfeco.storage.ConfigManager;
 import net.busybee.obfeco.storage.MessageManager;
+import net.busybee.obfeco.util.BStatsManager;
+import net.busybee.obfeco.util.FastStatsManager;
 import net.busybee.obfeco.util.LogManager;
 import net.busybee.obfeco.util.SignInput;
 import net.busybee.obfeco.util.VersionCheck;
 import lombok.Getter;
-import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -33,6 +34,8 @@ public class Obfeco extends JavaPlugin {
     
     private VaultHook vaultHook;
     private PlaceholderHook placeholderHook;
+
+    private FastStatsManager fastStatsManager;
     
     @Override
     public void onEnable() {
@@ -69,7 +72,9 @@ public class Obfeco extends JavaPlugin {
         registerListeners();
         registerHooks();
         
-        new Metrics(this, 29485);
+        new BStatsManager(this);
+        this.fastStatsManager = new FastStatsManager(this);
+        this.fastStatsManager.onEnable();
 
         FastInvManager.register(this);
 
@@ -80,6 +85,10 @@ public class Obfeco extends JavaPlugin {
     
     @Override
     public void onDisable() {
+        if (this.fastStatsManager != null) {
+            this.fastStatsManager.onDisable();
+        }
+
         if (this.currencyManager != null) {
             this.currencyManager.shutdown();
         }
